@@ -10,6 +10,9 @@ permissions:
   pull-requests: write
   id-token: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release:
     name: Publish package
@@ -35,7 +38,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Ensure npm supports trusted publishing
-        run: npm install --global npm@^11.5.1
+        run: npm install --global npm@^11.10.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

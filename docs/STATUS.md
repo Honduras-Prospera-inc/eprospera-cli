@@ -61,10 +61,12 @@ notes that should survive across agent sessions.
 
 - Human-review `docs/AGENT.md` before the first public release.
 - Configure npm publishing auth before relying on release automation:
-  - preferred: npm trusted publishing for GitHub Actions publisher
-    `Honduras-Prospera-inc/eprospera-cli` and workflow filename `release.yml`
-  - fallback: repository secret `NPM_TOKEN` with a granular token that can
-    publish `@prospera/eprospera-cli` and bypass publish-time 2FA
+  - first publish: manual `npm publish --access public --otp <code>` or
+    repository secret `NPM_TOKEN` with a granular token that can publish
+    `@prospera/eprospera-cli` and bypass publish-time 2FA
+  - after the package exists: npm trusted publishing for GitHub Actions
+    publisher `Honduras-Prospera-inc/eprospera-cli` and workflow filename
+    `release.yml`, then remove long-lived publish tokens
 - Publish `@prospera/eprospera-cli` after the release gate passes.
 
 ## Current Caveats
@@ -79,6 +81,10 @@ notes that should survive across agent sessions.
 - Release run `26419399364` passed verification but failed at publish because
   npm auth is not configured: `NPM_TOKEN` was empty and npm returned
   `ENEEDAUTH`.
+- Release run `26419674226` used the Node 24/npm 11 publishing path and reached
+  npm with OIDC available, but publish still failed because the package does not
+  exist or the publisher does not have registry permission yet: npm returned
+  `E404`.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
 
