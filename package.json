@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "TypeScript CLI for the e-Prospera public API.",
   "bin": {
-    "eprospera": "./bin/eprospera.js"
+    "eprospera": "bin/eprospera.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
