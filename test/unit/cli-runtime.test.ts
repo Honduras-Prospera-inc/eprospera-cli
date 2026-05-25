@@ -1,4 +1,5 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execa } from "execa";
@@ -7,6 +8,8 @@ import { runCli } from "../../src/index.js";
 import type { OutputWriter } from "../../src/output/format.js";
 
 const tempDirs: string[] = [];
+const require = createRequire(import.meta.url);
+const tsxCliPath = require.resolve("tsx/cli");
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
@@ -14,7 +17,7 @@ afterEach(async () => {
 
 describe("CLI runtime", () => {
   it("prints version through the executable entrypoint", async () => {
-    const result = await execa("pnpm", ["exec", "tsx", "src/index.ts", "--version"], {
+    const result = await execa(process.execPath, [tsxCliPath, "src/index.ts", "--version"], {
       cwd: process.cwd(),
     });
 
