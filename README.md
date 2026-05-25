@@ -84,6 +84,7 @@ pnpm test                 # Run unit tests
 pnpm run test:e2e         # Run opt-in staging e2e tests when EPROSPERA_E2E=1
 pnpm run check            # Run formatting/lint checks and typecheck
 pnpm run bundle           # Build a portable ncc executable at dist/bundle/
+pnpm run pack:smoke       # Install the packed tarball in a clean temp project
 ```
 
 The pre-commit hook runs `pnpm run gen:all` to keep generated artifacts current.
@@ -98,6 +99,31 @@ Before publishing or tagging a release, check the package contents:
 
 ```sh
 npm pack --dry-run --json --ignore-scripts
+pnpm run pack:smoke
+```
+
+## Release
+
+The first public release should happen only after the full local gate passes:
+
+```sh
+pnpm run gen:all
+pnpm run check
+pnpm run validate:ocs
+pnpm test
+pnpm run build
+pnpm run bundle
+npm pack --dry-run --json --ignore-scripts
+pnpm run pack:smoke
+```
+
+For automated releases, configure the repository `NPM_TOKEN` secret and let the
+Changesets release workflow publish. For a manual first publish, use:
+
+```sh
+npm publish --access public
+npm install -g @prospera/eprospera-cli
+eprospera --help
 ```
 
 ## License

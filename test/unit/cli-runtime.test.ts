@@ -67,6 +67,51 @@ describe("CLI runtime", () => {
     expect(JSON.parse(result.stdout)).toEqual({ name: "Ada Lovelace" });
   });
 
+  it("applies raw mode and fields at the CLI boundary", async () => {
+    const result = await runCommand(
+      ["--raw", "--fields", "active", "entity", "verify", "80000000000012"],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async () =>
+          Response.json({
+            result: "found_legal_entity",
+            active: true,
+            ignored: "value",
+          }),
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{"active":true}\n');
+    expect(result.stderr).toBe("");
+  });
+
+  it("renders human tables without writing diagnostics to stdout", async () => {
+    const result = await runCommand(
+      ["--no-auto-json", "application", "list"],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async () =>
+          Response.json({
+            data: [
+              {
+                id: "app-1",
+                statusId: "Draft",
+                legalEntityId: "entity-1",
+                createdAt: "2026-05-25T00:00:00.000Z",
+              },
+            ],
+          }),
+      },
+      { stdoutTty: true },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Draft");
+    expect(result.stdout).toContain("entity-1");
+    expect(result.stderr).toBe("");
+  });
+
   it("fails with JSON usage errors before making invalid requests", async () => {
     const result = await runCommand(["--json", "entity", "verify", "bad-rpn"], {
       env: { EPROSPERA_API_KEY: "sk-test" },
@@ -81,6 +126,59 @@ describe("CLI runtime", () => {
         code: "INVALID_USAGE",
       },
     });
+  });
+
+  it("returns missing credential errors before calling the API", async () => {
+    const result = await runCommand(["--json", "entity", "verify", "80000000000012"], {
+      env: {},
+      loadStoredCredential: async () => undefined,
+      fetch: async () => {
+        throw new Error("network should not be called");
+      },
+    });
+
+    expect(result.exitCode).toBe(3);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: {
+        code: "NO_CREDENTIAL",
+      },
+    });
+  });
+
+  it("returns missing scope errors before calling the API", async () => {
+    const result = await runCommand(["--json", "application", "list"], {
+      env: {},
+      loadStoredCredential: async () => ({
+        kind: "ak",
+        token: "ak-test",
+        scopes: ["agent:entity.application.create"],
+      }),
+      fetch: async () => {
+        throw new Error("network should not be called");
+      },
+    });
+
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: {
+        code: "MISSING_SCOPE",
+      },
+    });
+  });
+
+  it("allows skip-scope-check for one-off Agent Keys", async () => {
+    const result = await runCommand(["--json", "--skip-scope-check", "application", "list"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "ak",
+        token: "ak-test",
+        scopes: [],
+      }),
+      fetch: async () => Response.json({ data: [] }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ data: [] });
   });
 
   it("supports config set, get, list, and unset", async () => {
@@ -145,6 +243,38 @@ describe("CLI runtime", () => {
         scopes: ["agent:verify_rpn"],
       },
     ]);
+  });
+
+  it("uses --yes to bypass interactive write confirmations", async () => {
+    let prompted = false;
+    let paid = false;
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "application",
+        "pay",
+        "00000000-0000-4000-8000-000000000000",
+        "--coupon",
+        "FOUNDER100",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        promptConfirm: async () => {
+          prompted = true;
+          return false;
+        },
+        fetch: async () => {
+          paid = true;
+          return Response.json({ data: { id: "app-1", statusId: "Paid" } });
+        },
+      },
+      { stdinTty: true, stdoutTty: true, stderrTty: true },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(prompted).toBe(false);
+    expect(paid).toBe(true);
   });
 
   it("prints application create dry-runs without credentials or network", async () => {
@@ -216,18 +346,73 @@ describe("CLI runtime", () => {
       { data: { id: "00000000-0000-4000-8000-000000000000", statusId: "Approved" } },
     ]);
   });
+
+  it("reports application watch terminal failure states", async () => {
+    const result = await runCommand(
+      ["--json", "application", "watch", "00000000-0000-4000-8000-000000000000"],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async () =>
+          Response.json({
+            data: { id: "00000000-0000-4000-8000-000000000000", statusId: "Rejected" },
+          }),
+      },
+    );
+
+    expect(result.exitCode).toBe(10);
+    expect(JSON.parse(lastErrorEnvelope(result.stdout))).toMatchObject({
+      error: {
+        code: "TERMINAL_FAILURE_STATE",
+      },
+    });
+  });
+
+  it("reports application watch timeouts", async () => {
+    let currentMs = 0;
+    const result = await runCommand(
+      [
+        "--json",
+        "application",
+        "watch",
+        "00000000-0000-4000-8000-000000000000",
+        "--timeout",
+        "1ms",
+        "--initial-interval",
+        "1ms",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        now: () => currentMs,
+        sleep: async (ms) => {
+          currentMs += ms;
+        },
+        fetch: async () =>
+          Response.json({
+            data: { id: "00000000-0000-4000-8000-000000000000", statusId: "Draft" },
+          }),
+      },
+    );
+
+    expect(result.exitCode).toBe(9);
+    expect(JSON.parse(lastErrorEnvelope(result.stdout))).toMatchObject({
+      error: {
+        code: "WATCH_TIMEOUT",
+      },
+    });
+  });
 });
 
 async function runCommand(
   args: string[],
   deps: Parameters<typeof runCli>[1] = {},
+  streamOptions: { stdinTty?: boolean; stdoutTty?: boolean; stderrTty?: boolean } = {},
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const stdout = new BufferWriter(false);
-  const stderr = new BufferWriter(false);
+  const stdout = new BufferWriter(streamOptions.stdoutTty ?? false);
+  const stderr = new BufferWriter(streamOptions.stderrTty ?? false);
   const exitCode = await runCli(["node", "eprospera", ...args], {
     ...deps,
     streams: {
-      stdin: { isTTY: false },
+      stdin: { isTTY: streamOptions.stdinTty ?? false },
       stdout,
       stderr,
     },
@@ -244,6 +429,12 @@ async function createTempDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "eprospera-cli-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function lastErrorEnvelope(stdout: string): string {
+  const index = stdout.lastIndexOf('{\n  "error"');
+  expect(index).toBeGreaterThanOrEqual(0);
+  return stdout.slice(index);
 }
 
 class BufferWriter implements OutputWriter {

@@ -13,6 +13,7 @@
     "gen:api": "tsx scripts/gen-api-client.ts",
     "gen:completions": "tsx scripts/gen-completions.ts",
     "gen:docs": "tsx scripts/gen-docs.ts",
+    "pack:smoke": "tsx scripts/smoke-packed-install.ts",
     "prepare": "simple-git-hooks",
     "test": "vitest run",
     "test:e2e": "vitest run test/e2e",
@@ -42,8 +43,7 @@
     "simple-git-hooks": "^2.13.1",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7",
-    "yaml": "^2.9.0"
+    "vitest": "^4.1.7"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.4.3",
@@ -53,6 +53,7 @@
     "openapi-fetch": "^0.17.0",
     "ora": "^9.4.0",
     "picocolors": "^1.1.1",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "simple-git-hooks": {

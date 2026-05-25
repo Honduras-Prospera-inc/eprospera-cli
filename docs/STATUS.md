@@ -60,15 +60,19 @@ notes that should survive across agent sessions.
 ## Remaining Build Plan
 
 - Human-review `docs/AGENT.md` before the first public release.
-- Confirm repository secrets are configured: `NPM_TOKEN` for npm publishing and
-  the default `GITHUB_TOKEN` release permissions.
+- Configure repository secret `NPM_TOKEN` for automated npm publishing. A local
+  `gh secret list --repo Honduras-Prospera-inc/eprospera-cli` check on
+  2026-05-25 returned no configured secrets.
 - Merge the Changesets version PR that the release workflow opens on `main`.
+- Publish `@prospera/eprospera-cli` after the release gate passes.
 
 ## Current Caveats
 
 - `@prospera/eprospera-cli` is configured for public npm publishing, and the
   `prospera` npm org is accessible, but the package is not published yet. npm
   404 responses for this package are expected until the first publish.
+- Local npm access is verified as `gmembreno-prospera`, owner of the `prospera`
+  npm org.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
 
@@ -81,6 +85,7 @@ pnpm test
 pnpm run build
 pnpm run bundle
 npm pack --dry-run --json --ignore-scripts
+pnpm run pack:smoke
 ```
 
 ## Agent-Friendly CLI Notes

@@ -63,3 +63,6 @@ jobs:
 
       - name: Check npm package contents
         run: npm pack --dry-run --json --ignore-scripts
+
+      - name: Smoke test packed install
+        run: pnpm run pack:smoke

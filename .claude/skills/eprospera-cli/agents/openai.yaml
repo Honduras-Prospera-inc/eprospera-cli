@@ -1,0 +1,4 @@
+interface:
+  display_name: "eProspera CLI"
+  short_description: "Use e-Prospera CLI safely from agent workflows."
+  default_prompt: "Use $eprospera-cli to inspect the e-Prospera CLI schema and run the requested workflow with JSON output."
