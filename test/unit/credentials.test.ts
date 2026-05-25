@@ -22,17 +22,13 @@ afterEach(async () => {
 });
 
 describe("credential store", () => {
-  it("writes and reads plaintext fallback credentials with safe permissions", async () => {
+  it("writes and reads plaintext fallback credentials", async () => {
     const xdgConfigHome = await createTempDir();
     const credential = storedCredential({ kind: "ak", token: "ak-test" });
 
     await expect(
       saveCredential(credential, { env: { XDG_CONFIG_HOME: xdgConfigHome }, keytar: null }),
     ).resolves.toBe("file");
-
-    const filePath = getCredentialFilePath({ env: { XDG_CONFIG_HOME: xdgConfigHome } });
-    await expect(modeOf(dirname(filePath))).resolves.toBe(0o700);
-    await expect(modeOf(filePath)).resolves.toBe(0o600);
 
     await expect(
       loadCredential({ env: { XDG_CONFIG_HOME: xdgConfigHome }, keytar: null }),
@@ -43,6 +39,23 @@ describe("credential store", () => {
       source: "file",
     });
   });
+
+  it.skipIf(process.platform === "win32")(
+    "writes plaintext fallback credentials with safe POSIX permissions",
+    async () => {
+      const xdgConfigHome = await createTempDir();
+      const credential = storedCredential({ kind: "ak", token: "ak-test" });
+
+      await saveCredential(credential, {
+        env: { XDG_CONFIG_HOME: xdgConfigHome },
+        keytar: null,
+      });
+
+      const filePath = getCredentialFilePath({ env: { XDG_CONFIG_HOME: xdgConfigHome } });
+      await expect(modeOf(dirname(filePath))).resolves.toBe(0o700);
+      await expect(modeOf(filePath)).resolves.toBe(0o600);
+    },
+  );
 
   it("prefers keytar credentials over the plaintext fallback", async () => {
     const xdgConfigHome = await createTempDir();
