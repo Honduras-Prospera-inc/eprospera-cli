@@ -31,7 +31,7 @@ try {
     "--pack-destination",
     packDir,
   ]);
-  const packed = JSON.parse(packResult.stdout) as PackedPackage[];
+  const packed = JSON.parse(extractJsonArray(packResult.stdout)) as PackedPackage[];
   const tarball = packed[0]?.filename;
   if (!tarball) {
     throw new Error("npm pack did not return a tarball filename.");
@@ -117,6 +117,15 @@ function assertEquals(actual: unknown, expected: unknown, label: string): void {
       `Expected ${label} to be ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}.`,
     );
   }
+}
+
+function extractJsonArray(value: string): string {
+  const start = value.indexOf("[\n  {");
+  if (start === -1) {
+    throw new Error(`Could not find npm pack JSON output.\nstdout:\n${value}`);
+  }
+
+  return value.slice(start);
 }
 
 function run(

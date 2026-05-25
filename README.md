@@ -16,7 +16,7 @@ place. The npm package is not published until the first Changesets release runs.
 ## Requirements
 
 - Node.js 20 or newer
-- pnpm 11.x
+- pnpm 10.x
 
 ## Install
 

@@ -7,7 +7,7 @@ the e-Prospera public API; see [`README.md`](./README.md) for an overview and
 ## Prerequisites
 
 - Node.js 20 or newer
-- pnpm 11.x (pinned via `packageManager` in `package.json`)
+- pnpm 10.x (pinned via `packageManager` in `package.json`)
 
 ## Local setup
 

@@ -10,7 +10,7 @@ The authoritative design lives in `docs/scaffold/` (numbered 01-10). Read those 
 
 ## Common Commands
 
-Package manager is **pnpm** (pinned to `pnpm@11.3.0`). Node >= 20.
+Package manager is **pnpm** (pinned to `pnpm@10.33.4`). Node >= 20.
 
 - `pnpm build` — TypeScript build to `dist/`
 - `pnpm test` — Vitest run (matches `test/**/*.test.ts`)

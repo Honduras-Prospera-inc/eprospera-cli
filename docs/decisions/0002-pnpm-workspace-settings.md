@@ -8,9 +8,10 @@ Accepted
 
 ## Context
 
-pnpm 11 no longer reads install build approvals from the `pnpm` field in
-`package.json`. The project depends on packages with legitimate install scripts,
-including `esbuild` through the toolchain and `keytar` for credential storage.
+Modern pnpm releases read install build approvals from workspace settings rather
+than the `pnpm` field in `package.json`. The project depends on packages with
+legitimate install scripts, including `esbuild` through the toolchain and
+`keytar` for credential storage.
 
 ## Decision
 
