@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-import("../dist/src/index.js");
+const { runCli } = await import("../dist/src/index.js");
+process.exitCode = await runCli();

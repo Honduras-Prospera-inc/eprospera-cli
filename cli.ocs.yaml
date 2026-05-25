@@ -314,20 +314,24 @@ command:
       description: Log in, inspect, and remove local credentials.
       commands:
         - name: login
-          description: Store an Agent Key, standard API key, or OAuth credential.
+          description: Store an Agent Key or standard API key.
           interactive: true
           options:
             - name: --agent-key
               description: Prompt for an ak- Agent Key and validate it.
-            - name: --oauth
-              description: Start OAuth login plumbing.
             - name: --standard-key
               description: Prompt for an sk- standard API key.
+            - name: --scopes
+              description: Comma-separated Agent Key scopes to cache.
+              arguments:
+                - name: csv
+                  required: true
+                  description: Comma-separated scope names.
           examples:
-            - eprospera auth login --agent-key
+            - eprospera auth login --agent-key --scopes agent:person.details.read
           metadata:
             - name: credentialTypes
-              value: [ak, sk, oauth]
+              value: [ak, sk]
         - name: whoami
           description: Show the currently resolved credential kind and owner metadata.
           examples:

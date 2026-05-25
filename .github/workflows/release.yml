@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Publish package
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      version: ${{ steps.package-version.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate checked artifacts
+        run: pnpm run gen:all
+
+      - name: Verify generated files are current
+        run: git diff --exit-code
+
+      - name: Validate OpenCLI document
+        run: pnpm run validate:ocs
+
+      - name: Check formatting and types
+        run: pnpm run check
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build package
+        run: pnpm run build
+
+      - name: Build bundled executable
+        run: pnpm run bundle
+
+      - name: Check npm package contents
+        run: npm pack --dry-run --json --ignore-scripts
+
+      - name: Version or publish with Changesets
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset publish
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Read published package version
+        id: package-version
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+  binaries:
+    name: Build release bundle (${{ matrix.asset }})
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: eprospera-linux-x64.mjs
+          - os: macos-latest
+            asset: eprospera-macos-x64.mjs
+          - os: windows-latest
+            asset: eprospera-windows-x64.mjs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build bundled executable
+        run: pnpm run bundle
+
+      - name: Stage release bundle
+        shell: bash
+        run: |
+          mkdir -p release-binaries
+          cp dist/bundle/eprospera.mjs "release-binaries/${{ matrix.asset }}"
+          chmod +x "release-binaries/${{ matrix.asset }}"
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binary-${{ matrix.asset }}
+          path: release-binaries/${{ matrix.asset }}
+          if-no-files-found: error
+
+  attach-binaries:
+    name: Attach release bundles
+    needs:
+      - release
+      - binaries
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release bundle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-binary-*
+          path: release-binaries
+          merge-multiple: true
+
+      - name: Attach bundles to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: "@prospera/eprospera-cli@${{ needs.release.outputs.version }}"
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+          gh release upload "${RELEASE_TAG}" release-binaries/* --clobber

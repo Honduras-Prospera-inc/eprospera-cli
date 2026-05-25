@@ -59,7 +59,7 @@ const commandScopes = {
     credentialTypes: ["ak", "oauth"],
   },
   "auth.login": {
-    credentialTypes: ["ak", "sk", "oauth"],
+    credentialTypes: ["ak", "sk"],
   },
   "auth.whoami": {
     credentialTypes: ["ak", "sk", "oauth"],

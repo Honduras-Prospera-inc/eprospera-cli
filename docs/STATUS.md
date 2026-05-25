@@ -43,14 +43,34 @@ notes that should survive across agent sessions.
   - human table presets for entities, applications, and documents
   - unit tests for mode resolution, formatting, errors, field selection, and
     table presets
+- Step 7: Real command implementations with Zod input validation:
+  - Commander entrypoint and executable shim
+  - `entity verify/search/get/documents`
+  - `application list/create/get/pay/watch`
+  - `me profile/residency/id-verification`
+  - `auth login/whoami/logout`
+  - `config get/set/list/unset`
+  - `completion` and `schema`
+  - command-level unit tests with injected runtime dependencies
+- Step 8: `docs/AGENT.md` agent-facing usage guide under 300 lines.
+- Step 9: Opt-in staging e2e test scaffold for read-only commands.
+- Step 10: GitHub Actions CI/release workflows, CODEOWNERS, portable `ncc`
+  bundle build, and initial Changesets entry.
 
 ## Remaining Build Plan
 
-- Step 7: Real command implementations with Zod input validation.
-- Step 8: `docs/AGENT.md` agent-facing usage guide.
-- Step 9: Opt-in staging e2e tests.
-- Step 10: GitHub Actions CI/release workflows, single-file binaries, and
-  initial changeset.
+- Human-review `docs/AGENT.md` before the first public release.
+- Confirm repository secrets are configured: `NPM_TOKEN` for npm publishing and
+  the default `GITHUB_TOKEN` release permissions.
+- Merge the Changesets version PR that the release workflow opens on `main`.
+
+## Current Caveats
+
+- `@prospera/eprospera-cli` is configured for public npm publishing, and the
+  `prospera` npm org is accessible, but the package is not published yet. npm
+  404 responses for this package are expected until the first publish.
+- The bundled release artifacts are portable Node.js executables produced by
+  `@vercel/ncc`; they still require Node.js 20 or newer.
 
 ## Current Verification Commands
 
@@ -59,6 +79,8 @@ pnpm run check
 pnpm run validate:ocs
 pnpm test
 pnpm run build
+pnpm run bundle
+npm pack --dry-run --json --ignore-scripts
 ```
 
 ## Agent-Friendly CLI Notes

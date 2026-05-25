@@ -8,9 +8,10 @@ default so it can be used cleanly from shells, CI jobs, and agentic tools.
 
 ## Status
 
-This repository is the early v0.1 CLI scaffold. The OpenCLI command spec,
-generated API types, completion/doc generation scripts, and validation tooling are
-in place. Command implementations are still being built out.
+This repository is in v0.1 release preparation. The OpenCLI command spec,
+generated API types, command implementations, completion/doc generation scripts,
+validation tooling, CI, release automation, and bundled executable build are in
+place. The npm package is not published until the first Changesets release runs.
 
 ## Requirements
 
@@ -80,7 +81,9 @@ pnpm run gen:completions  # Generate shell completions under dist/
 pnpm run validate:ocs     # Validate cli.ocs.yaml against the OpenCLI schema
 pnpm run typecheck        # Run TypeScript without emitting files
 pnpm test                 # Run unit tests
+pnpm run test:e2e         # Run opt-in staging e2e tests when EPROSPERA_E2E=1
 pnpm run check            # Run formatting/lint checks and typecheck
+pnpm run bundle           # Build a portable ncc executable at dist/bundle/
 ```
 
 The pre-commit hook runs `pnpm run gen:all` to keep generated artifacts current.

@@ -91,7 +91,9 @@ async function resolveKeytar(options: CredentialStoreOptions): Promise<KeytarAda
   }
 
   try {
-    const keytarModule = (await import("keytar")) as unknown;
+    // Keep keytar optional in ncc bundles so standalone artifacts can use file fallback.
+    const keytarPackageName = ["keytar"].join("");
+    const keytarModule = (await import(keytarPackageName)) as unknown;
     return unwrapKeytarModule(keytarModule);
   } catch {
     return undefined;

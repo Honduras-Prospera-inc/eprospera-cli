@@ -8,7 +8,7 @@
 
 ## Description
 
-Store an Agent Key, standard API key, or OAuth credential.
+Store an Agent Key or standard API key.
 
 ## Arguments
 
@@ -30,8 +30,8 @@ This command has no positional arguments.
 | `--no-auto-json` |  |  | Disable automatic JSON output when stdout is not a TTY. |
 | `--skip-scope-check` |  |  | Skip cached local Agent Key scope preflight. |
 | `--agent-key` |  |  | Prompt for an ak- Agent Key and validate it. |
-| `--oauth` |  |  | Start OAuth login plumbing. |
 | `--standard-key` |  |  | Prompt for an sk- standard API key. |
+| `--scopes` |  | `csv` | Comma-separated Agent Key scopes to cache. |
 
 ## Environment Fallbacks
 
@@ -61,11 +61,11 @@ This command has no positional arguments.
 ## Examples
 
 ```sh
-eprospera auth login --agent-key
+eprospera auth login --agent-key --scopes agent:person.details.read
 ```
 
 ## Metadata
 
 | Name | Value |
 | --- | --- |
-| `credentialTypes` | `ak, sk, oauth` |
+| `credentialTypes` | `ak, sk` |
