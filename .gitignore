@@ -6,9 +6,6 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# Private/generated documentation
-docs/
-
 # Local environment, credentials, and request payloads
 .env
 .env.*
