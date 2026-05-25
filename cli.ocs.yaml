@@ -1,0 +1,402 @@
+$schema: https://opencli.org/draft.json
+opencli: "0.1"
+info:
+  title: eprospera
+  version: "0.1.0"
+  summary: Command-line access to the e-Prospera public API.
+  description: >
+    Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
+    identity, authentication, configuration, completion, and schema workflows.
+  contact:
+    name: Prospera
+    url: https://docs.eprospera.com
+  license:
+    name: MIT License
+    identifier: MIT
+    url: https://opensource.org/license/mit
+conventions:
+  groupOptions: true
+  optionSeparator: " "
+command:
+  name: eprospera
+  description: Command-line wrapper over the e-Prospera public API.
+  options:
+    - name: --json
+      recursive: true
+      group: Output
+      description: Pretty-print JSON to stdout and suppress color, spinners, and incidental output.
+    - name: --raw
+      recursive: true
+      group: Output
+      description: Print compact single-line JSON to stdout.
+    - name: --fields
+      recursive: true
+      group: Output
+      description: Restrict output keys for read commands.
+      arguments:
+        - name: keys
+          required: true
+          description: Comma-separated output fields, such as id,statusId,name.
+    - name: --quiet
+      recursive: true
+      group: Output
+      description: Suppress incidental human output.
+    - name: --yes
+      aliases: [-y]
+      recursive: true
+      group: Interaction
+      description: Skip confirmation prompts.
+    - name: --api-key
+      recursive: true
+      group: Authentication
+      description: Use this bearer token instead of environment or stored credentials.
+      arguments:
+        - name: value
+          required: true
+          description: Agent Key, standard API key, or OAuth access token.
+    - name: --dry-run
+      recursive: true
+      group: Execution
+      description: Validate locally and print the request that would be sent.
+    - name: --help
+      aliases: [-h]
+      recursive: true
+      group: Help
+      description: Show help for a command.
+    - name: --version
+      recursive: true
+      group: Help
+      description: Show the CLI version.
+    - name: --no-auto-json
+      recursive: true
+      group: Output
+      description: Disable automatic JSON output when stdout is not a TTY.
+    - name: --skip-scope-check
+      recursive: true
+      group: Authentication
+      description: Skip cached local Agent Key scope preflight.
+  exitCodes:
+    - code: 0
+      description: Success.
+    - code: 1
+      description: Generic failure or unexpected error.
+    - code: 2
+      description: Invalid usage, bad flag, or missing argument.
+    - code: 3
+      description: Authentication failure, including 401 or no credential configured.
+    - code: 4
+      description: Authorization failure, including missing scope or revoked Manifestation of Will.
+    - code: 5
+      description: Resource not found, usually 404.
+    - code: 6
+      description: Conflict, including 409, name collision, or impossible state transition.
+    - code: 7
+      description: Rate limit, usually 429.
+    - code: 8
+      description: Validation error, usually 400.
+    - code: 9
+      description: Timeout, including polling or network timeout.
+    - code: 10
+      description: Application or coupon entered a terminal failure state.
+  commands:
+    - name: entity
+      description: Verify, search, inspect, and fetch documents for legal entities.
+      commands:
+        - name: verify
+          description: Verify whether an RPN exists and is active.
+          arguments:
+            - name: rpn
+              required: true
+              description: 14-digit resident permit number starting with 8 or 9.
+          examples:
+            - eprospera --json entity verify 80000000000012
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/verify_rpn
+            - name: requiredScope
+              value: agent:verify_rpn
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: search
+          description: Search the legal-entity registry by name or partial RPN.
+          arguments:
+            - name: query
+              required: true
+              description: Free-text query. Multi-word input is split by the API.
+          examples:
+            - eprospera --json entity search "Acme Holdings"
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/registries/legal_entities/search
+            - name: requiredScope
+              value: agent:registry.search
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: get
+          description: Fetch one legal entity by UUID.
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity UUID.
+          examples:
+            - eprospera --json entity get 00000000-0000-4000-8000-000000000000
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/legal_entities/{id}
+            - name: requiredScope
+              value: agent:entity.read
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: documents
+          description: Fetch documents for one legal entity.
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity UUID.
+          examples:
+            - eprospera --json entity documents 00000000-0000-4000-8000-000000000000
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/legal_entities/{id}/documents
+            - name: requiredScope
+              value: agent:entity.documents.read
+            - name: credentialTypes
+              value: [ak, sk]
+    - name: application
+      description: Create, pay, list, inspect, and watch legal-entity applications.
+      commands:
+        - name: list
+          description: List API-created legal-entity applications visible to the credential.
+          examples:
+            - eprospera --json application list --fields id,statusId,legalEntityId
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/legal_entity_applications
+            - name: requiredScope
+              value: agent:entity.application.read
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: create
+          description: Create a legal-entity application from a JSON request file.
+          interactive: true
+          options:
+            - name: --file
+              description: Read the application request body from a JSON file.
+              arguments:
+                - name: path
+                  required: true
+                  description: Path to a JSON request body.
+          examples:
+            - eprospera --json --yes application create --file application.json
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/legal_entity_applications
+            - name: requiredScope
+              value: agent:entity.application.create
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: get
+          description: Fetch one legal-entity application by UUID.
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity application UUID.
+          examples:
+            - eprospera --json application get 00000000-0000-4000-8000-000000000000
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/legal_entity_applications/{id}
+            - name: requiredScope
+              value: agent:entity.application.read
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: pay
+          description: Apply a fully covering coupon to a legal-entity application.
+          interactive: true
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity application UUID.
+          options:
+            - name: --coupon
+              required: true
+              description: Coupon code to apply.
+              arguments:
+                - name: code
+                  required: true
+                  description: Coupon code.
+          examples:
+            - eprospera --json --yes application pay 00000000-0000-4000-8000-000000000000 --coupon EXAMPLE_COUPON
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/legal_entity_applications/{id}/pay/coupon
+            - name: requiredScope
+              value: agent:entity.application.pay
+            - name: credentialTypes
+              value: [ak, sk]
+        - name: watch
+          description: Poll an application until approval, rejection, payment failure, or timeout.
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity application UUID.
+          options:
+            - name: --timeout
+              description: Hard polling timeout.
+              arguments:
+                - name: duration
+                  required: true
+                  description: Duration such as 30m or 1h.
+            - name: --initial-interval
+              description: Polling interval before backoff.
+              arguments:
+                - name: duration
+                  required: true
+                  description: Duration such as 30s.
+            - name: --max-interval
+              description: Maximum polling interval after backoff.
+              arguments:
+                - name: duration
+                  required: true
+                  description: Duration such as 5m.
+          examples:
+            - eprospera --json application watch 00000000-0000-4000-8000-000000000000 --timeout 30m
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/legal_entity_applications/{id}
+            - name: requiredScope
+              value: agent:entity.application.read
+            - name: credentialTypes
+              value: [ak, sk]
+    - name: me
+      description: Read profile data for the Agent Key owner or OAuth user.
+      commands:
+        - name: profile
+          description: Fetch the natural-person profile for the credential owner.
+          examples:
+            - eprospera --json me profile
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/natural-person
+            - name: requiredScope
+              value: agent:person.details.read
+            - name: oauthScope
+              value: eprospera:person.details.read
+            - name: credentialTypes
+              value: [ak, oauth]
+        - name: residency
+          description: Fetch current or historical residency status for the credential owner.
+          examples:
+            - eprospera --json me residency
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/natural-person/residency
+            - name: requiredScope
+              value: agent:person.residency.read
+            - name: oauthScope
+              value: eprospera:person.residency.read
+            - name: credentialTypes
+              value: [ak, oauth]
+        - name: id-verification
+          description: Fetch ID-verification artifact URLs for the credential owner.
+          examples:
+            - eprospera --json me id-verification
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/natural-person/id-verification
+            - name: requiredScope
+              value: agent:person.id_verification.read
+            - name: oauthScope
+              value: eprospera:person.id_verification.read
+            - name: credentialTypes
+              value: [ak, oauth]
+    - name: auth
+      description: Log in, inspect, and remove local credentials.
+      commands:
+        - name: login
+          description: Store an Agent Key, standard API key, or OAuth credential.
+          interactive: true
+          options:
+            - name: --agent-key
+              description: Prompt for an ak- Agent Key and validate it.
+            - name: --oauth
+              description: Start OAuth login plumbing.
+            - name: --standard-key
+              description: Prompt for an sk- standard API key.
+          examples:
+            - eprospera auth login --agent-key
+          metadata:
+            - name: credentialTypes
+              value: [ak, sk, oauth]
+        - name: whoami
+          description: Show the currently resolved credential kind and owner metadata.
+          examples:
+            - eprospera --json auth whoami
+          metadata:
+            - name: credentialTypes
+              value: [ak, sk, oauth]
+        - name: logout
+          description: Delete locally stored credentials.
+          interactive: true
+          examples:
+            - eprospera --yes auth logout
+          metadata:
+            - name: credentialTypes
+              value: [ak, sk, oauth]
+    - name: config
+      description: Read and write local CLI configuration.
+      commands:
+        - name: get
+          description: Read one configuration value.
+          arguments:
+            - name: key
+              required: true
+              description: Configuration key.
+          examples:
+            - eprospera --json config get api.baseUrl
+        - name: set
+          description: Set one configuration value.
+          arguments:
+            - name: key
+              required: true
+              description: Configuration key.
+            - name: value
+              required: true
+              description: Configuration value.
+          examples:
+            - eprospera config set api.baseUrl https://api.example.com
+        - name: list
+          description: List all local configuration values.
+          examples:
+            - eprospera --json config list
+        - name: unset
+          description: Remove one configuration value.
+          arguments:
+            - name: key
+              required: true
+              description: Configuration key.
+          examples:
+            - eprospera config unset api.baseUrl
+    - name: completion
+      description: Generate shell completion scripts.
+      commands:
+        - name: bash
+          description: Print Bash completion script.
+          examples:
+            - eprospera completion bash
+        - name: zsh
+          description: Print Zsh completion script.
+          examples:
+            - eprospera completion zsh
+        - name: fish
+          description: Print Fish completion script.
+          examples:
+            - eprospera completion fish
+        - name: powershell
+          description: Print PowerShell completion script.
+          examples:
+            - eprospera completion powershell
+    - name: schema
+      description: Print this OpenCLI document to stdout.
+      examples:
+        - eprospera schema
