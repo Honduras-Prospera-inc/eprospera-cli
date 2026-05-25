@@ -23,13 +23,29 @@ notes that should survive across agent sessions.
   - network timeout mapping
   - idempotency keys for legal-entity application writes
   - MSW-backed unit tests for common API statuses and request behavior
+- Step 5: Credential storage, credential resolution, static scope map, and local
+  scope preflight checks:
+  - keytar-first credential storage with plaintext fallback
+  - `0600` credential file and `0700` credential directory enforcement
+  - `--api-key` / `EPROSPERA_API_KEY` / stored credential resolution
+  - expired stored credential handling
+  - static command scope map aligned with `cli.ocs.yaml`
+  - Agent Key and OAuth local scope checks
+  - credential type compatibility checks
+  - unit tests for store, resolver, scope behavior, and scope-map drift
+- Step 6: Output formatting, TTY/color behavior, human tables, JSON/raw modes,
+  and `--fields`:
+  - output mode resolution for human, JSON, raw, and auto-JSON behavior
+  - terminal capability detection for color, spinners, and interactivity
+  - JSON/raw success and error printing with stdout/stderr discipline
+  - `ExitError` machine envelopes and human error output
+  - field selection for top-level and dotted paths
+  - human table presets for entities, applications, and documents
+  - unit tests for mode resolution, formatting, errors, field selection, and
+    table presets
 
 ## Remaining Build Plan
 
-- Step 5: Credential storage, credential resolution, static scope map, and local
-  scope preflight checks.
-- Step 6: Output formatting, TTY/color behavior, human tables, JSON/raw modes,
-  and `--fields`.
 - Step 7: Real command implementations with Zod input validation.
 - Step 8: `docs/AGENT.md` agent-facing usage guide.
 - Step 9: Opt-in staging e2e tests.
