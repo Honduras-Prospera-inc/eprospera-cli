@@ -6,11 +6,11 @@ const outDir = "dist/bundle";
 const nccOutput = join(outDir, "index.js");
 const nccPackageMarker = join(outDir, "package.json");
 const executable = join(outDir, "eprospera.mjs");
+const nccBin = join("node_modules", "@vercel", "ncc", "dist", "ncc", "cli.js");
 
 await rm(outDir, { recursive: true, force: true });
-await run("pnpm", [
-  "exec",
-  "ncc",
+await run(process.execPath, [
+  nccBin,
   "build",
   "dist/src/index.js",
   "-o",
