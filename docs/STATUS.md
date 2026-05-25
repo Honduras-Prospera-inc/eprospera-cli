@@ -60,10 +60,11 @@ notes that should survive across agent sessions.
 ## Remaining Build Plan
 
 - Human-review `docs/AGENT.md` before the first public release.
-- Configure repository secret `NPM_TOKEN` for automated npm publishing. A local
-  `gh secret list --repo Honduras-Prospera-inc/eprospera-cli` check on
-  2026-05-25 returned no configured secrets.
-- Merge the Changesets version PR that the release workflow opens on `main`.
+- Configure npm publishing auth before relying on release automation:
+  - preferred: npm trusted publishing for GitHub Actions publisher
+    `Honduras-Prospera-inc/eprospera-cli` and workflow filename `release.yml`
+  - fallback: repository secret `NPM_TOKEN` with a granular token that can
+    publish `@prospera/eprospera-cli` and bypass publish-time 2FA
 - Publish `@prospera/eprospera-cli` after the release gate passes.
 
 ## Current Caveats
@@ -73,6 +74,11 @@ notes that should survive across agent sessions.
   404 responses for this package are expected until the first publish.
 - Local npm access is verified as `gmembreno-prospera`, owner of the `prospera`
   npm org.
+- PR #1 merged the Changesets version branch on 2026-05-25, and post-merge CI
+  run `26419399363` passed on Ubuntu, macOS, and Windows for Node 20 and 22.
+- Release run `26419399364` passed verification but failed at publish because
+  npm auth is not configured: `NPM_TOKEN` was empty and npm returned
+  `ENEEDAUTH`.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
 

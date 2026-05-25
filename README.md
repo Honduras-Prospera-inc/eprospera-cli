@@ -117,11 +117,18 @@ npm pack --dry-run --json --ignore-scripts
 pnpm run pack:smoke
 ```
 
-For automated releases, configure the repository `NPM_TOKEN` secret and let the
-Changesets release workflow publish. For a manual first publish, use:
+For automated releases, use one of these npm auth paths:
+
+- Preferred: configure npm trusted publishing for this package with GitHub
+  Actions publisher `Honduras-Prospera-inc/eprospera-cli` and workflow filename
+  `release.yml`.
+- Fallback: configure the repository `NPM_TOKEN` secret with a granular token
+  that can publish `@prospera/eprospera-cli` and bypass publish-time 2FA.
+
+For a manual first publish from a logged-in maintainer account, use:
 
 ```sh
-npm publish --access public
+npm publish --access public --otp <one-time-code>
 npm install -g @prospera/eprospera-cli
 eprospera --help
 ```
