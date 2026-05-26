@@ -74,7 +74,7 @@ command:
     - name: --skip-scope-check
       recursive: true
       group: Authentication
-      description: Skip cached local Agent Key scope preflight.
+      description: Bypass cached local Agent Key scope preflight.
   exitCodes:
     - code: 0
       description: Success.

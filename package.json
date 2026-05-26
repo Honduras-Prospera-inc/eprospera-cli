@@ -23,10 +23,12 @@
     "gen:docs": "tsx scripts/gen-docs.ts",
     "pack:smoke": "tsx scripts/smoke-packed-install.ts",
     "prepare": "simple-git-hooks",
+    "sync:ocs-version": "tsx scripts/sync-ocs-version.ts",
     "test": "vitest run",
     "test:e2e": "vitest run test/e2e",
     "typecheck": "tsc --noEmit",
-    "validate:ocs": "tsx scripts/validate-ocs.ts"
+    "validate:ocs": "tsx scripts/validate-ocs.ts",
+    "version:changesets": "changeset version && pnpm run sync:ocs-version && pnpm run gen:docs"
   },
   "keywords": [],
   "author": "",

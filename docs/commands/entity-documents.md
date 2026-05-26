@@ -30,7 +30,7 @@ Fetch documents for one legal entity.
 | `--help` | `-h` |  | Show help for a command. |
 | `--version` |  |  | Show the CLI version. |
 | `--no-auto-json` |  |  | Disable automatic JSON output when stdout is not a TTY. |
-| `--skip-scope-check` |  |  | Skip cached local Agent Key scope preflight. |
+| `--skip-scope-check` |  |  | Bypass cached local Agent Key scope preflight. |
 
 ## Environment Fallbacks
 

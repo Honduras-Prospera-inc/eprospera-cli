@@ -16,7 +16,7 @@ This org is the home of the developer experience around the [e-Prospera public A
 
 ### [`eprospera-cli`](https://github.com/Honduras-Prospera-inc/eprospera-cli)
 
-TypeScript CLI over the e-Prospera public API. Designed for humans, scripts, and CI — every command has a stable JSON mode, stable exit codes, and runs a local scope preflight before touching the network.
+TypeScript CLI over the e-Prospera public API. Designed for humans, scripts, and CI — every command has a stable JSON mode, stable exit codes, and supports local scope preflight before touching the network.
 
 ```bash
 npm install -g @prospera/eprospera-cli

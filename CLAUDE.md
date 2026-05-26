@@ -34,6 +34,8 @@ Package manager is **pnpm** (`pnpm@11.3.0`). Supported Node versions are
 - `pnpm run bundle` - build the portable `dist/bundle/eprospera.mjs`.
 - `npm pack --dry-run --json --ignore-scripts` - inspect npm package contents.
 - `pnpm run pack:smoke` - install and smoke-test the packed tarball.
+- `pnpm run version:changesets` - apply Changesets versions, sync
+  `cli.ocs.yaml`, and regenerate command docs for release PRs.
 
 Run the full local gate before release-impacting changes:
 
@@ -127,6 +129,9 @@ Stable exit codes:
 Changesets manages package versions. Add a changeset with
 `pnpm exec changeset` when changing published behavior, package metadata, CLI
 flags, output contracts, or dependencies shipped to users.
+
+Use `pnpm run version:changesets` for release-version PRs so `package.json`,
+`cli.ocs.yaml`, `CHANGELOG.md`, and generated command docs stay aligned.
 
 GitHub Actions publishes from `main` using npm trusted publishing. There should
 be no long-lived `NPM_TOKEN` secret for normal releases. Release tags created by

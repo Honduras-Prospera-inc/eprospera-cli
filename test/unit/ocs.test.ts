@@ -1,15 +1,25 @@
-import { access, readFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execa } from "execa";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { createProgram } from "../../src/index.js";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../../package.json") as { version: string };
+const tsxCliPath = require.resolve("tsx/cli");
 
 type OcsCommand = {
   name: string;
+  options?: OcsOption[];
   commands?: OcsCommand[];
+};
+
+type OcsOption = {
+  name: string;
+  description?: string;
 };
 
 const source = await readFile("cli.ocs.yaml", "utf8");
@@ -24,12 +34,58 @@ describe("cli.ocs.yaml", () => {
     expect(document.info.version).toBe(packageJson.version);
   });
 
+  it("syncs the OpenCLI info version from package metadata", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eprospera-ocs-"));
+    const packageJsonPath = join(dir, "package.json");
+    const ocsPath = join(dir, "cli.ocs.yaml");
+
+    try {
+      await writeFile(packageJsonPath, `${JSON.stringify({ version: "9.8.7" }, null, 2)}\n`);
+      await writeFile(
+        ocsPath,
+        [
+          'opencli: "0.1"',
+          "info:",
+          "  title: eprospera",
+          '  version: "0.0.0"',
+          "command:",
+          "  name: eprospera",
+          "",
+        ].join("\n"),
+      );
+
+      await execa(
+        process.execPath,
+        [tsxCliPath, "scripts/sync-ocs-version.ts", packageJsonPath, ocsPath],
+        {
+          cwd: process.cwd(),
+        },
+      );
+
+      const synced = parse(await readFile(ocsPath, "utf8")) as { info: { version: string } };
+      expect(synced.info.version).toBe("9.8.7");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("covers the v0.1 command surface", () => {
     expect(leafCommands(document.command)).toHaveLength(24);
   });
 
   it("matches the Commander command registration", () => {
     expect(leafCommandIds(document.command).sort()).toEqual(commanderLeafCommandIds().sort());
+  });
+
+  it("keeps the skip-scope-check help text aligned with Commander", () => {
+    const ocsOption = document.command.options?.find(
+      (option) => option.name === "--skip-scope-check",
+    );
+    const commanderOption = createProgram().options.find(
+      (option) => option.long === "--skip-scope-check",
+    );
+
+    expect(commanderOption?.description).toBe(ocsOption?.description);
   });
 
   it("has a generated command doc for every leaf command", async () => {

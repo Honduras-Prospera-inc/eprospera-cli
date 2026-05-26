@@ -30,7 +30,7 @@ Poll an application until approval, rejection, payment failure, or timeout.
 | `--help` | `-h` |  | Show help for a command. |
 | `--version` |  |  | Show the CLI version. |
 | `--no-auto-json` |  |  | Disable automatic JSON output when stdout is not a TTY. |
-| `--skip-scope-check` |  |  | Skip cached local Agent Key scope preflight. |
+| `--skip-scope-check` |  |  | Bypass cached local Agent Key scope preflight. |
 | `--timeout` |  | `duration` | Hard polling timeout. |
 | `--initial-interval` |  | `duration` | Polling interval before backoff. |
 | `--max-interval` |  | `duration` | Maximum polling interval after backoff. |

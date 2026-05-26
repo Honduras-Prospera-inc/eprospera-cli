@@ -64,6 +64,34 @@ describe("scope checks", () => {
     ).toEqual({ ok: false, missing: "agent:entity.application.create" });
   });
 
+  it("lets one-off Agent Keys without cached scopes defer authorization to the API", () => {
+    expect(
+      checkCommandScope("application.create", {
+        kind: "ak",
+        scopes: [],
+        source: "env",
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      checkCommandScope("application.create", {
+        kind: "ak",
+        scopes: [],
+        source: "flag",
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("still checks stored Agent Keys with cached scope metadata", () => {
+    expect(
+      checkCommandScope("application.create", {
+        kind: "ak",
+        scopes: [],
+        source: "file",
+      }),
+    ).toEqual({ ok: false, missing: "agent:entity.application.create" });
+  });
+
   it("lets skip-scope-check bypass cached scope presence", () => {
     expect(
       checkCommandScope(

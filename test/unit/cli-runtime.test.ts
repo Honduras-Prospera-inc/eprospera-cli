@@ -170,6 +170,39 @@ describe("CLI runtime", () => {
     });
   });
 
+  it("lets environment Agent Keys without cached scopes reach the API", async () => {
+    let called = false;
+    const result = await runCommand(["--json", "application", "list"], {
+      env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async () => {
+        called = true;
+        return Response.json({ data: [] });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(called).toBe(true);
+    expect(JSON.parse(result.stdout)).toEqual({ data: [] });
+  });
+
+  it("lets flag Agent Keys without cached scopes reach the API", async () => {
+    let authorization: string | null = null;
+    const result = await runCommand(
+      ["--json", "--api-key", "ak-test", "entity", "search", "prospera"],
+      {
+        env: { EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async (request) => {
+          authorization = request.headers.get("authorization");
+          return Response.json({ results: [] });
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(authorization).toBe("Bearer ak-test");
+    expect(JSON.parse(result.stdout)).toEqual({ results: [] });
+  });
+
   it("allows skip-scope-check for one-off Agent Keys", async () => {
     const result = await runCommand(["--json", "--skip-scope-check", "application", "list"], {
       env: { EPROSPERA_BASE_URL: "https://api.test" },

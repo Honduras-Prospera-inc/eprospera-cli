@@ -72,7 +72,9 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - Use `--fields id,statusId,name` to reduce large read responses.
 - Put credentials in `--api-key`, `EPROSPERA_API_KEY`, or `auth login`; never echo tokens.
 - Treat `auth login` as interactive unless `--api-key` is supplied.
-- Add `--skip-scope-check` for one-off Agent Keys when cached scopes are unavailable.
+- One-off Agent Keys from `--api-key` or `EPROSPERA_API_KEY` defer scope checks to the API
+  when no cached scopes are available.
+- Add `--skip-scope-check` only to bypass cached local scope metadata intentionally.
 - Use `EPROSPERA_ENV=staging` for staging e2e checks.
 - Use `EPROSPERA_BASE_URL=<url>` only for trusted API endpoints.
 

@@ -77,7 +77,7 @@ Every command should honor these global flags where applicable:
 | `--help` | Show help sourced from `cli.ocs.yaml`. |
 | `--version` | Show CLI version. |
 | `--no-auto-json` | Disable auto-switch to JSON when stdout is not a TTY. |
-| `--skip-scope-check` | Skip local scope preflight if cached scopes are stale. |
+| `--skip-scope-check` | Bypass local scope preflight if cached scopes are stale. |
 
 ## Exit Codes
 

@@ -53,7 +53,7 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
     )
     .option("--dry-run", "Validate locally and print the request that would be sent.")
     .option("--no-auto-json", "Disable automatic JSON output when stdout is not a TTY.")
-    .option("--skip-scope-check", "Skip cached local Agent Key scope preflight.");
+    .option("--skip-scope-check", "Bypass cached local Agent Key scope preflight.");
 
   const entity = program
     .command("entity")

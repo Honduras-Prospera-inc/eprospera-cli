@@ -28,7 +28,7 @@ This command has no positional arguments.
 | `--help` | `-h` |  | Show help for a command. |
 | `--version` |  |  | Show the CLI version. |
 | `--no-auto-json` |  |  | Disable automatic JSON output when stdout is not a TTY. |
-| `--skip-scope-check` |  |  | Skip cached local Agent Key scope preflight. |
+| `--skip-scope-check` |  |  | Bypass cached local Agent Key scope preflight. |
 | `--agent-key` |  |  | Prompt for an ak- Agent Key and validate it. |
 | `--standard-key` |  |  | Prompt for an sk- standard API key. |
 | `--scopes` |  | `csv` | Comma-separated Agent Key scopes to cache. |

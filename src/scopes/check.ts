@@ -1,4 +1,4 @@
-import type { CredentialKind } from "../credentials/types.js";
+import type { CredentialKind, CredentialSource } from "../credentials/types.js";
 import { ExitCodes, ExitError } from "../errors.js";
 import { getCommandScope } from "./map.js";
 
@@ -7,6 +7,7 @@ export const SCOPE_REFERENCE_URL = "https://docs.eprospera.com/agent-keys.html#s
 export type ScopeCredential = {
   kind: CredentialKind;
   scopes: readonly string[];
+  source?: CredentialSource;
 };
 
 export type ScopeCheckOptions = {
@@ -50,12 +51,24 @@ export function checkCommandScope(
     return { ok: true };
   }
 
+  if (hasUncachedOneOffAgentKeyScopes(credential)) {
+    return { ok: true };
+  }
+
   const requiredScope = requiredScopeForCredential(credential.kind, requirement);
   if (requiredScope && !credential.scopes.includes(requiredScope)) {
     return { ok: false, missing: requiredScope };
   }
 
   return { ok: true };
+}
+
+function hasUncachedOneOffAgentKeyScopes(credential: ScopeCredential): boolean {
+  return (
+    credential.kind === "ak" &&
+    credential.scopes.length === 0 &&
+    (credential.source === "flag" || credential.source === "env")
+  );
 }
 
 export function assertCommandScope(

@@ -73,7 +73,8 @@ pnpm test
   ```
 
   Changesets manages `CHANGELOG.md` and release versions; do not edit the
-  changelog by hand.
+  changelog by hand. Maintainers should use `pnpm run version:changesets` for
+  release-version PRs so `cli.ocs.yaml` stays aligned with `package.json`.
 - Open the PR against `main`. Fill out the PR template. CI must pass.
 
 ## Reporting issues
