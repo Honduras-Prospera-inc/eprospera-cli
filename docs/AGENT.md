@@ -9,7 +9,7 @@ legal-entity applications.
 Most agent workflows use these commands:
 
 ```sh
-eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes agent:person.details.read
+eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes agent:person.details.read,agent:entity.application.create,agent:entity.application.read
 eprospera --json --yes application create --file application.json
 eprospera --json application watch <application-id> --timeout 30m
 ```
@@ -121,15 +121,18 @@ appears, request a credential with `agent:person.details.read`.
 Credential: Agent Key or standard API key with `agent:verify_rpn` and
 `agent:entity.read`.
 
+`entity verify` confirms whether an RPN is known and active. It does not return
+the legal-entity ID; use registry search to select the entity before fetching.
+
 ```sh
-entity_id="$(
-  eprospera --raw entity verify 80000000000012 |
-  node -e 'let x="";process.stdin.on("data",d=>x+=d).on("end",()=>console.log(JSON.parse(x).id ?? ""))'
-)"
-test -n "$entity_id" && eprospera --json entity get "$entity_id"
+rpn=80000000000012
+eprospera --json entity verify "$rpn"
+eprospera --json entity search "$rpn"
 ```
 
-If the verify response has no entity ID, stop and report the verification result.
+If search returns exactly one legal entity, use its `id` with
+`eprospera --json entity get <id>`. If it returns zero or multiple results, stop
+and ask for a specific legal-entity UUID.
 
 ### 3. Create an Application
 
