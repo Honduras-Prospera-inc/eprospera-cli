@@ -16,7 +16,7 @@ publishing, and bundled executable build are in place.
 ## Requirements
 
 - Node.js `^20.17.0 || ^22.13.0 || >=23.5.0`
-- pnpm 10.x
+- pnpm 11.3.0
 
 ## Install
 

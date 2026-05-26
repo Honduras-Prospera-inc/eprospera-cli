@@ -1,7 +1,11 @@
 import { access, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { createProgram } from "../../src/index.js";
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../../package.json") as { version: string };
 
 type OcsCommand = {
   name: string;
@@ -9,11 +13,15 @@ type OcsCommand = {
 };
 
 const source = await readFile("cli.ocs.yaml", "utf8");
-const document = parse(source) as { command: OcsCommand };
+const document = parse(source) as { info: { version: string }; command: OcsCommand };
 
 describe("cli.ocs.yaml", () => {
   it("defines the expected root command", () => {
     expect(document.command.name).toBe("eprospera");
+  });
+
+  it("uses the package version in the OpenCLI info block", () => {
+    expect(document.info.version).toBe(packageJson.version);
   });
 
   it("covers the v0.1 command surface", () => {

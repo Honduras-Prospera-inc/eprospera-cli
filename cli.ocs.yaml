@@ -2,7 +2,7 @@ $schema: https://opencli.org/draft.json
 opencli: "0.1"
 info:
   title: eprospera
-  version: "0.1.0"
+  version: "0.1.1"
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,

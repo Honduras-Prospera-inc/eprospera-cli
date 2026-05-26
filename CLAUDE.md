@@ -22,7 +22,7 @@ items.
 
 ## Common Commands
 
-Package manager is **pnpm** (`pnpm@10.33.4`). Supported Node versions are
+Package manager is **pnpm** (`pnpm@11.3.0`). Supported Node versions are
 `^20.17.0 || ^22.13.0 || >=23.5.0`.
 
 - `pnpm install` - install dependencies.
