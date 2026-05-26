@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 This file tracks what has been implemented, what remains, and implementation
 notes that should survive across agent sessions.
@@ -59,6 +59,12 @@ notes that should survive across agent sessions.
 - Step 11: `@prospera/eprospera-cli@0.1.1` published to npm, npm trusted
   publishing exercised through GitHub Actions, and matching GitHub releases/tags
   created with bundled release assets.
+- Step 12: Agent Key auth polish for the next patch release:
+  - one-off Agent Keys from `--api-key` and `EPROSPERA_API_KEY` defer scope
+    authorization to the API when no local scope cache is available
+  - `auth whoami` reports whether scopes are cached locally
+  - `auth whoami --verify` performs explicit API identity checks where supported
+  - Changesets versioning syncs `cli.ocs.yaml` and regenerates command docs
 
 ## Remaining Build Plan
 
@@ -81,6 +87,8 @@ notes that should survive across agent sessions.
   `0.1.1` by depending on the exact prompt packages used by the CLI.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
+- The next Changesets release should exercise both the release asset attach
+  workflow and the OpenCLI version sync wrapper.
 
 ## Current Verification Commands
 

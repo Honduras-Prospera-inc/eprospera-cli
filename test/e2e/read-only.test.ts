@@ -4,6 +4,17 @@ import { runCli } from "../../src/index.js";
 const runE2E = process.env.EPROSPERA_E2E === "1" && Boolean(process.env.EPROSPERA_API_KEY);
 
 describe.skipIf(!runE2E)("staging read-only commands", () => {
+  it("verifies the active credential identity when supported", async () => {
+    const exitCode = await runCli(["node", "eprospera", "--json", "auth", "whoami", "--verify"], {
+      env: {
+        ...process.env,
+        EPROSPERA_ENV: process.env.EPROSPERA_BASE_URL ? process.env.EPROSPERA_ENV : "staging",
+      },
+    });
+
+    expect(exitCode).toBe(0);
+  });
+
   it("runs me profile against the configured API", async () => {
     const exitCode = await runCli(["node", "eprospera", "--json", "me", "profile"], {
       env: {

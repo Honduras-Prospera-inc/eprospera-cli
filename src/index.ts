@@ -140,9 +140,12 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
     .action(function (this: Command) {
       return runApplicationSafe(() => runAuthLogin(this.opts(), globals(this), deps));
     });
-  auth.command("whoami").action(function (this: Command) {
-    return runApplicationSafe(() => runAuthWhoami(globals(this), deps));
-  });
+  auth
+    .command("whoami")
+    .option("--verify", "Verify the credential against an API identity endpoint when available.")
+    .action(function (this: Command) {
+      return runApplicationSafe(() => runAuthWhoami(this.opts(), globals(this), deps));
+    });
   auth.command("logout").action(function (this: Command) {
     return runApplicationSafe(() => runAuthLogout(globals(this), deps));
   });

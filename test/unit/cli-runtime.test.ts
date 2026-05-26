@@ -282,6 +282,181 @@ describe("CLI runtime", () => {
     ]);
   });
 
+  it("shows when one-off Agent Key scopes are not cached", async () => {
+    const result = await runCommand(["--json", "auth", "whoami"], {
+      env: { EPROSPERA_API_KEY: "ak-test" },
+      fetch: async () => {
+        throw new Error("network should not be called");
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      kind: "ak",
+      source: "env",
+      scopes: [],
+      cachedScopes: {
+        known: false,
+        source: "unavailable",
+      },
+    });
+    expect(result.stdout).not.toContain("ak-test");
+  });
+
+  it("verifies Agent Key identity through the current user endpoint", async () => {
+    let requestUrl: string | undefined;
+    const result = await runCommand(["--json", "auth", "whoami", "--verify"], {
+      env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async (request) => {
+        requestUrl = request.url;
+        return Response.json({
+          name: "Ada Lovelace",
+          givenName: "Ada",
+          surname: "Lovelace",
+          residentPermitNumber: "80000000000012",
+          address: { country: "HN" },
+        });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe("https://api.test/api/v1/me/natural-person");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      kind: "ak",
+      source: "env",
+      verification: {
+        status: "verified",
+        endpoint: "GET /api/v1/me/natural-person",
+        identity: {
+          name: "Ada Lovelace",
+          givenName: "Ada",
+          surname: "Lovelace",
+          residentPermitNumber: "80000000000012",
+        },
+      },
+    });
+    expect(result.stdout).not.toContain("address");
+    expect(result.stdout).not.toContain("ak-test");
+  });
+
+  it("reports Agent Key identity verification as unavailable when identity scope is missing", async () => {
+    const result = await runCommand(["--json", "auth", "whoami", "--verify"], {
+      env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async () =>
+        Response.json(
+          {
+            error: {
+              code: "MISSING_SCOPE",
+              message: "Missing required scope.",
+            },
+          },
+          { status: 403 },
+        ),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      kind: "ak",
+      verification: {
+        status: "unavailable",
+        endpoint: "GET /api/v1/me/natural-person",
+      },
+    });
+    expect(result.stdout).not.toContain("ak-test");
+  });
+
+  it("reports Agent Key identity verification authentication failures", async () => {
+    const result = await runCommand(["--json", "auth", "whoami", "--verify"], {
+      env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async () =>
+        Response.json(
+          {
+            error: {
+              code: "UNAUTHENTICATED",
+              message: "Authentication failed.",
+            },
+          },
+          { status: 401 },
+        ),
+    });
+
+    expect(result.exitCode).toBe(3);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: {
+        code: "UNAUTHENTICATED",
+        httpStatus: 401,
+      },
+    });
+    expect(result.stdout).not.toContain("ak-test");
+  });
+
+  it("verifies OAuth identity through userinfo", async () => {
+    let authorization: string | null = null;
+    let requestUrl: string | undefined;
+    const result = await runCommand(["--json", "auth", "whoami", "--verify"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "oauth",
+        token: "oauth-test",
+        scopes: ["openid", "profile"],
+      }),
+      fetch: async (request) => {
+        authorization = request.headers.get("authorization");
+        requestUrl = request.url;
+        return Response.json({
+          sub: "person-1",
+          name: "Ada Lovelace",
+          email: "ada@example.test",
+          email_verified: true,
+          picture: "https://example.test/avatar.png",
+        });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(authorization).toBe("Bearer oauth-test");
+    expect(requestUrl).toBe("https://api.test/api/oauth/userinfo");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      kind: "oauth",
+      source: "keytar",
+      verification: {
+        status: "verified",
+        endpoint: "GET /api/oauth/userinfo",
+        identity: {
+          sub: "person-1",
+          name: "Ada Lovelace",
+          email: "ada@example.test",
+          email_verified: true,
+        },
+      },
+    });
+    expect(result.stdout).not.toContain("picture");
+    expect(result.stdout).not.toContain("oauth-test");
+  });
+
+  it("reports standard API key identity verification as unavailable", async () => {
+    const result = await runCommand(["--json", "auth", "whoami", "--verify"], {
+      env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async () => {
+        throw new Error("network should not be called");
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      kind: "sk",
+      cachedScopes: {
+        known: false,
+        source: "not-applicable",
+      },
+      verification: {
+        status: "unavailable",
+        reason: "Standard API keys do not expose an owner identity endpoint.",
+      },
+    });
+    expect(result.stdout).not.toContain("sk-test");
+  });
+
   it("uses --yes to bypass interactive write confirmations", async () => {
     let prompted = false;
     let paid = false;

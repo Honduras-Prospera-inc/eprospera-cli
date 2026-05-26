@@ -66,6 +66,14 @@ The CLI is intended to resolve credentials in this order:
 2. `EPROSPERA_API_KEY`
 3. Credentials saved by `eprospera auth login`
 
+Use `eprospera --json auth whoami` to confirm which credential the CLI resolved.
+Add `--verify` to perform an API identity check where the credential type
+supports one:
+
+```sh
+eprospera --json auth whoami --verify
+```
+
 Do not commit API keys, request payloads, `.env` files, or exported credentials.
 The repository ignore rules are configured to keep those out of the public repo.
 

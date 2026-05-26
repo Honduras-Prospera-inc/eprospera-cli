@@ -333,7 +333,10 @@ command:
             - name: credentialTypes
               value: [ak, sk]
         - name: whoami
-          description: Show the currently resolved credential kind and owner metadata.
+          description: Show the currently resolved credential kind and optional API identity metadata.
+          options:
+            - name: --verify
+              description: Verify the credential against an API identity endpoint when available.
           examples:
             - eprospera --json auth whoami
           metadata:

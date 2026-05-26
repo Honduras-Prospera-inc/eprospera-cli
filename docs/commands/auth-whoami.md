@@ -8,7 +8,7 @@
 
 ## Description
 
-Show the currently resolved credential kind and owner metadata.
+Show the currently resolved credential kind and optional API identity metadata.
 
 ## Arguments
 
@@ -29,6 +29,7 @@ This command has no positional arguments.
 | `--version` |  |  | Show the CLI version. |
 | `--no-auto-json` |  |  | Disable automatic JSON output when stdout is not a TTY. |
 | `--skip-scope-check` |  |  | Bypass cached local Agent Key scope preflight. |
+| `--verify` |  |  | Verify the credential against an API identity endpoint when available. |
 
 ## Environment Fallbacks
 

@@ -59,6 +59,7 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | An Agent Key | Save it for later commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes <csv>` |
 | A standard API key | Save it for registry/application commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --standard-key` |
 | A one-off token | Avoid local credential storage | `eprospera --api-key "$EPROSPERA_API_KEY" --json <command>` |
+| A credential | Confirm local resolution and optional API identity | `eprospera --json auth whoami --verify` |
 | An RPN | Check whether an entity exists | `eprospera --json entity verify <rpn>` |
 | A legal entity UUID | Fetch entity details | `eprospera --json entity get <id>` |
 | A request JSON file | Create an application | `eprospera --json --yes application create --file application.json` |
@@ -75,6 +76,7 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - One-off Agent Keys from `--api-key` or `EPROSPERA_API_KEY` defer scope checks to the API
   when no cached scopes are available.
 - Add `--skip-scope-check` only to bypass cached local scope metadata intentionally.
+- `auth whoami` is local by default; add `--verify` to call an API identity endpoint.
 - Use `EPROSPERA_ENV=staging` for staging e2e checks.
 - Use `EPROSPERA_BASE_URL=<url>` only for trusted API endpoints.
 
@@ -108,7 +110,23 @@ Machine-mode errors use this shape:
 
 ## Recipes
 
-### 1. Read Current User Profile
+### 1. Confirm Credential Resolution
+
+```sh
+eprospera --json auth whoami
+eprospera --json auth whoami --verify
+```
+
+Without `--verify`, `auth whoami` reports the resolved credential kind, source,
+stored owner metadata, and whether Agent Key scopes are cached locally. With
+`--verify`, it performs an API identity check where the credential type supports
+one. Standard API keys do not expose an owner identity endpoint.
+
+Verification returns `status: "verified"` with minimal identity fields, or
+`status: "unavailable"` when an identity endpoint is not available for the
+credential type or scope set. A 401 still means the credential is invalid.
+
+### 2. Read Current User Profile
 
 Credential: Agent Key with `agent:person.details.read`, or OAuth credential.
 
@@ -119,7 +137,7 @@ eprospera --json --fields id,fullName,email me profile
 Expected stdout is a JSON object for the credential owner. If exit code `4`
 appears, request a credential with `agent:person.details.read`.
 
-### 2. Verify and Fetch an Entity
+### 3. Verify and Fetch an Entity
 
 Credential: Agent Key or standard API key with `agent:verify_rpn` and
 `agent:entity.read`.
@@ -137,7 +155,7 @@ If search returns exactly one legal entity, use its `id` with
 `eprospera --json entity get <id>`. If it returns zero or multiple results, stop
 and ask for a specific legal-entity UUID.
 
-### 3. Create an Application
+### 4. Create an Application
 
 Credential: Agent Key or standard API key with
 `agent:entity.application.create`.
@@ -154,7 +172,7 @@ eprospera --json --dry-run application create --file application.json
 
 Fix exit code `8` by editing the request body according to `error.details`.
 
-### 4. Pay and Watch an Application
+### 5. Pay and Watch an Application
 
 Credential: Agent Key or standard API key with
 `agent:entity.application.pay` and `agent:entity.application.read`.
