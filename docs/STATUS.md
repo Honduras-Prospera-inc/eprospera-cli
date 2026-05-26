@@ -56,30 +56,29 @@ notes that should survive across agent sessions.
 - Step 9: Opt-in staging e2e test scaffold for read-only commands.
 - Step 10: GitHub Actions CI/release workflows, CODEOWNERS, portable `ncc`
   bundle build, and initial Changesets entry.
-- Step 11: `@prospera/eprospera-cli@0.1.0` published to npm, npm trusted
-  publishing configured for GitHub Actions, and matching GitHub release/tag
+- Step 11: `@prospera/eprospera-cli@0.1.1` published to npm, npm trusted
+  publishing exercised through GitHub Actions, and matching GitHub releases/tags
   created with bundled release assets.
 
 ## Remaining Build Plan
 
 - Human-review `docs/AGENT.md` before the next broad rollout.
 - Update public docs and examples after each published release.
-- Publish the dependency/engine metadata patch that removes the npm install
-  engine warning from transitive prompt dependencies.
-- Exercise the trusted publishing path on the next Changesets release.
+- Verify the release asset attach workflow on the next Changesets publish after
+  the `v<version>` release tag fix.
 
 ## Current Caveats
 
-- `@prospera/eprospera-cli@0.1.0` is published and installable from npm.
+- `@prospera/eprospera-cli@0.1.1` is published and installable from npm.
 - npm package access status is public under the `prospera` org.
 - npm trusted publishing is configured for GitHub Actions repository
   `Honduras-Prospera-inc/eprospera-cli`, workflow file `release.yml`, and
   publish permission.
-- GitHub release `@prospera/eprospera-cli@0.1.0` exists and includes bundled
-  release assets for Linux, macOS, and Windows.
-- Local metadata now depends on the exact prompt packages used by the CLI and
-  pins the shared prompt core/mute-stream versions; publish a patch release so
-  npm consumers receive the warning-free dependency tree.
+- GitHub releases exist for the manual `@prospera/eprospera-cli@0.1.0` tag and
+  the Changesets `v0.1.1` tag; both include bundled release assets for Linux,
+  macOS, and Windows.
+- The npm install engine warning from transitive `mute-stream@4` was removed in
+  `0.1.1` by depending on the exact prompt packages used by the CLI.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
 

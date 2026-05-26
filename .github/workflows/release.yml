@@ -158,12 +158,18 @@ jobs:
       - name: Attach bundles to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: "@prospera/eprospera-cli@${{ needs.release.outputs.version }}"
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: "v${{ needs.release.outputs.version }}"
         run: |
+          release_found=false
           for attempt in 1 2 3 4 5 6; do
             if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+              release_found=true
               break
             fi
             sleep 5
           done
+          if [ "${release_found}" != "true" ]; then
+            gh release view "${RELEASE_TAG}"
+          fi
           gh release upload "${RELEASE_TAG}" release-binaries/* --clobber
