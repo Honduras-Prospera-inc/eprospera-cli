@@ -4,7 +4,8 @@
 
 `eprospera` is a JSON-first CLI for the e-Prospera public API. Use it to verify
 entities, inspect applications, read current-user data, and create or monitor
-legal-entity applications.
+legal-entity applications. This guide reflects `@prospera/eprospera-cli@0.1.1`
+and later.
 
 Most agent workflows use these commands:
 
