@@ -8,22 +8,21 @@ default so it can be used cleanly from shells, CI jobs, and agentic tools.
 
 ## Status
 
-This repository is in v0.1 release preparation. The OpenCLI command spec,
-generated API types, command implementations, completion/doc generation scripts,
-validation tooling, CI, release automation, and bundled executable build are in
-place. The npm package is not published until the first Changesets release runs.
+The package is published to npm as `@prospera/eprospera-cli`. The OpenCLI
+command spec, generated API types, command implementations, completion/doc
+generation scripts, validation tooling, CI, release automation, trusted
+publishing, and bundled executable build are in place.
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js `^20.17.0 || ^22.13.0 || >=23.5.0`
 - pnpm 10.x
 
 ## Install
 
-Once published:
-
 ```sh
 npm install -g @prospera/eprospera-cli
+eprospera --help
 ```
 
 For local development:
@@ -104,7 +103,7 @@ pnpm run pack:smoke
 
 ## Release
 
-The first public release should happen only after the full local gate passes:
+Before publishing or tagging a release, run the full local gate:
 
 ```sh
 pnpm run gen:all
@@ -117,23 +116,19 @@ npm pack --dry-run --json --ignore-scripts
 pnpm run pack:smoke
 ```
 
-For the first public publish, use one of these npm auth paths:
-
-- Manual: publish from a logged-in maintainer account with a one-time code.
-- Automated: configure the repository `NPM_TOKEN` secret with a granular token
-  that can publish `@prospera/eprospera-cli` and bypass publish-time 2FA.
-
-After the package exists on npm, prefer npm trusted publishing with GitHub
-Actions publisher `Honduras-Prospera-inc/eprospera-cli` and workflow filename
-`release.yml`, then remove any long-lived publish token.
-
-Manual first publish:
+Releases are managed by Changesets and GitHub Actions. npm trusted publishing is
+configured for repository `Honduras-Prospera-inc/eprospera-cli` and workflow
+file `release.yml`, so future publishes should not require a long-lived
+`NPM_TOKEN` secret.
 
 ```sh
-npm publish --access public --otp <one-time-code>
 npm install -g @prospera/eprospera-cli
 eprospera --help
 ```
+
+The initial `0.1.0` publish was performed manually from an authenticated npm
+maintainer account, then matched with the GitHub release
+`@prospera/eprospera-cli@0.1.0`.
 
 ## License
 

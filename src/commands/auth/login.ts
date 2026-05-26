@@ -1,4 +1,5 @@
-import { input, password } from "@inquirer/prompts";
+import input from "@inquirer/input";
+import password from "@inquirer/password";
 import { z } from "zod";
 import { saveCredential } from "../../credentials/store.js";
 import type { StoredCredential } from "../../credentials/types.js";

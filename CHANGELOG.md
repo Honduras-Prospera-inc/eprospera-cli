@@ -10,4 +10,18 @@ the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## Unreleased
 
-- Initial scaffold. No published releases yet.
+No unreleased changes.
+
+## 0.1.1 - 2026-05-25
+
+### Patch Changes
+
+- Pin prompt runtime dependencies and align Node engine metadata to avoid npm
+  install engine warnings from transitive prompt packages.
+
+## 0.1.0 - 2026-05-25
+
+- Initial public release of `@prospera/eprospera-cli`.
+- Added the v0.1 command surface, generated OpenCLI schema/docs/completions,
+  API client core, credential handling, output formatting, tests, CI, npm
+  packaging, bundled release assets, and GitHub Actions release workflow.

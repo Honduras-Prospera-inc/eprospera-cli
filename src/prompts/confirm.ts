@@ -1,4 +1,4 @@
-import { confirm } from "@inquirer/prompts";
+import confirm from "@inquirer/confirm";
 import type { GlobalOptions, RuntimeDependencies } from "../commands/runtime.js";
 import { terminalCapabilities } from "../output/tty.js";
 

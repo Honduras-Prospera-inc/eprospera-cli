@@ -1,6 +1,6 @@
 {
   "name": "@prospera/eprospera-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript CLI for the e-Prospera public API.",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": "^20.17.0 || ^22.13.0 || >=23.5.0"
   },
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {
@@ -54,10 +54,14 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.4.3",
+    "@inquirer/confirm": "6.0.13",
+    "@inquirer/core": "11.1.10",
+    "@inquirer/input": "5.0.13",
+    "@inquirer/password": "5.0.13",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
     "keytar": "^7.9.0",
+    "mute-stream": "3.0.0",
     "openapi-fetch": "^0.17.0",
     "ora": "^9.4.0",
     "picocolors": "^1.1.1",

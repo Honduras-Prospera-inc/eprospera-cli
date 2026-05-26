@@ -10,6 +10,7 @@ import type { OutputWriter } from "../../src/output/format.js";
 const tempDirs: string[] = [];
 const require = createRequire(import.meta.url);
 const tsxCliPath = require.resolve("tsx/cli");
+const packageJson = require("../../package.json") as { version: string };
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
@@ -21,7 +22,7 @@ describe("CLI runtime", () => {
       cwd: process.cwd(),
     });
 
-    expect(result.stdout).toBe("0.1.0");
+    expect(result.stdout).toBe(packageJson.version);
   });
 
   it("prints the OpenCLI schema as JSON when requested", async () => {

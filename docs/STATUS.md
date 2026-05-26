@@ -56,35 +56,30 @@ notes that should survive across agent sessions.
 - Step 9: Opt-in staging e2e test scaffold for read-only commands.
 - Step 10: GitHub Actions CI/release workflows, CODEOWNERS, portable `ncc`
   bundle build, and initial Changesets entry.
+- Step 11: `@prospera/eprospera-cli@0.1.0` published to npm, npm trusted
+  publishing configured for GitHub Actions, and matching GitHub release/tag
+  created with bundled release assets.
 
 ## Remaining Build Plan
 
-- Human-review `docs/AGENT.md` before the first public release.
-- Configure npm publishing auth before relying on release automation:
-  - first publish: manual `npm publish --access public --otp <code>` or
-    repository secret `NPM_TOKEN` with a granular token that can publish
-    `@prospera/eprospera-cli` and bypass publish-time 2FA
-  - after the package exists: npm trusted publishing for GitHub Actions
-    publisher `Honduras-Prospera-inc/eprospera-cli` and workflow filename
-    `release.yml`, then remove long-lived publish tokens
-- Publish `@prospera/eprospera-cli` after the release gate passes.
+- Human-review `docs/AGENT.md` before the next broad rollout.
+- Update public docs and examples after each published release.
+- Publish the dependency/engine metadata patch that removes the npm install
+  engine warning from transitive prompt dependencies.
+- Exercise the trusted publishing path on the next Changesets release.
 
 ## Current Caveats
 
-- `@prospera/eprospera-cli` is configured for public npm publishing, and the
-  `prospera` npm org is accessible, but the package is not published yet. npm
-  404 responses for this package are expected until the first publish.
-- Local npm access is verified as `gmembreno-prospera`, owner of the `prospera`
-  npm org.
-- PR #1 merged the Changesets version branch on 2026-05-25, and post-merge CI
-  run `26419399363` passed on Ubuntu, macOS, and Windows for Node 20 and 22.
-- Release run `26419399364` passed verification but failed at publish because
-  npm auth is not configured: `NPM_TOKEN` was empty and npm returned
-  `ENEEDAUTH`.
-- Release run `26419674226` used the Node 24/npm 11 publishing path and reached
-  npm with OIDC available, but publish still failed because the package does not
-  exist or the publisher does not have registry permission yet: npm returned
-  `E404`.
+- `@prospera/eprospera-cli@0.1.0` is published and installable from npm.
+- npm package access status is public under the `prospera` org.
+- npm trusted publishing is configured for GitHub Actions repository
+  `Honduras-Prospera-inc/eprospera-cli`, workflow file `release.yml`, and
+  publish permission.
+- GitHub release `@prospera/eprospera-cli@0.1.0` exists and includes bundled
+  release assets for Linux, macOS, and Windows.
+- Local metadata now depends on the exact prompt packages used by the CLI and
+  pins the shared prompt core/mute-stream versions; publish a patch release so
+  npm consumers receive the warning-free dependency tree.
 - The bundled release artifacts are portable Node.js executables produced by
   `@vercel/ncc`; they still require Node.js 20 or newer.
 
