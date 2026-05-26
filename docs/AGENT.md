@@ -9,7 +9,7 @@ legal-entity applications.
 Most agent workflows use these commands:
 
 ```sh
-eprospera auth login --agent-key --scopes agent:person.details.read
+eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes agent:person.details.read
 eprospera --json --yes application create --file application.json
 eprospera --json application watch <application-id> --timeout 30m
 ```
@@ -55,8 +55,8 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 
 | I have | I want | Run |
 | --- | --- | --- |
-| An Agent Key | Save it for later commands | `eprospera auth login --agent-key --scopes <csv>` |
-| A standard API key | Save it for registry/application commands | `eprospera auth login --standard-key` |
+| An Agent Key | Save it for later commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes <csv>` |
+| A standard API key | Save it for registry/application commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --standard-key` |
 | A one-off token | Avoid local credential storage | `eprospera --api-key "$EPROSPERA_API_KEY" --json <command>` |
 | An RPN | Check whether an entity exists | `eprospera --json entity verify <rpn>` |
 | A legal entity UUID | Fetch entity details | `eprospera --json entity get <id>` |
@@ -70,6 +70,7 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - Use `--raw` when token efficiency matters.
 - Use `--fields id,statusId,name` to reduce large read responses.
 - Put credentials in `--api-key`, `EPROSPERA_API_KEY`, or `auth login`; never echo tokens.
+- Treat `auth login` as interactive unless `--api-key` is supplied.
 - Add `--skip-scope-check` for one-off Agent Keys when cached scopes are unavailable.
 - Use `EPROSPERA_ENV=staging` for staging e2e checks.
 - Use `EPROSPERA_BASE_URL=<url>` only for trusted API endpoints.
