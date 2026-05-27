@@ -15,7 +15,7 @@ publishing, and bundled executable build are in place.
 
 ## Requirements
 
-- Node.js `^20.17.0 || ^22.13.0 || >=23.5.0`
+- Node.js `^22.13.0 || >=23.5.0`
 - pnpm 11.3.0
 
 ## Install
@@ -128,6 +128,11 @@ Releases are managed by Changesets and GitHub Actions. npm trusted publishing is
 configured for repository `Honduras-Prospera-inc/eprospera-cli` and workflow
 file `release.yml`, so future publishes should not require a long-lived
 `NPM_TOKEN` secret.
+
+If the GitHub organization blocks `GITHUB_TOKEN` from creating release PRs, set a
+`CHANGESETS_GITHUB_TOKEN` repository secret with pull request and contents write
+permissions. The release workflow falls back to `GITHUB_TOKEN` when that secret
+is not present.
 
 ```sh
 npm install -g @prospera/eprospera-cli

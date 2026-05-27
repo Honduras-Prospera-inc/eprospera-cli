@@ -22,7 +22,7 @@ live under `docs/commands/` and are regenerated from `cli.ocs.yaml`.
 - `pnpm run gen:all`: regenerate API types, command docs, and completions; this
   also runs in the configured pre-commit hook.
 
-Use Node `>=20` and the pinned package manager, `pnpm@11.3.0`.
+Use Node `^22.13.0 || >=23.5.0` and the pinned package manager, `pnpm@11.3.0`.
 
 ## Coding Style & Naming Conventions
 

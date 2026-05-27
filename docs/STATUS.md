@@ -86,7 +86,7 @@ notes that should survive across agent sessions.
 - The npm install engine warning from transitive `mute-stream@4` was removed in
   `0.1.1` by depending on the exact prompt packages used by the CLI.
 - The bundled release artifacts are portable Node.js executables produced by
-  `@vercel/ncc`; they still require Node.js 20 or newer.
+  `@vercel/ncc`; they require Node.js `^22.13.0 || >=23.5.0`.
 - The next Changesets release should exercise both the release asset attach
   workflow and the OpenCLI version sync wrapper.
 

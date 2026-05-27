@@ -23,7 +23,7 @@ items.
 ## Common Commands
 
 Package manager is **pnpm** (`pnpm@11.3.0`). Supported Node versions are
-`^20.17.0 || ^22.13.0 || >=23.5.0`.
+`^22.13.0 || >=23.5.0`.
 
 - `pnpm install` - install dependencies.
 - `pnpm run gen:all` - regenerate API types, command docs, and completions.
@@ -137,6 +137,10 @@ GitHub Actions publishes from `main` using npm trusted publishing. There should
 be no long-lived `NPM_TOKEN` secret for normal releases. Release tags created by
 Changesets use `v<version>`, and the release workflow attaches Linux, macOS, and
 Windows bundle assets to that release.
+
+The release workflow uses `CHANGESETS_GITHUB_TOKEN` when present, otherwise
+`GITHUB_TOKEN`, for Changesets release PRs. Use the dedicated secret only when
+organization policy blocks `GITHUB_TOKEN` from creating pull requests.
 
 Do not manually publish to npm unless the maintainer explicitly asks for that
 operation.
