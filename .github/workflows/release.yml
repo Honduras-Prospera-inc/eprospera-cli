@@ -70,8 +70,37 @@ jobs:
       - name: Smoke test packed install
         run: pnpm run pack:smoke
 
+      - name: Check release PR token
+        id: release-pr-token
+        shell: bash
+        env:
+          CHANGESETS_GITHUB_TOKEN: ${{ secrets.CHANGESETS_GITHUB_TOKEN }}
+        run: |
+          if [ -n "${CHANGESETS_GITHUB_TOKEN}" ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Detect pending changesets
+        id: pending-changesets
+        shell: bash
+        run: |
+          shopt -s nullglob
+          has_changesets=false
+          for changeset in .changeset/*.md; do
+            if [ "$(basename "${changeset}")" != "README.md" ]; then
+              has_changesets=true
+              break
+            fi
+          done
+          echo "present=${has_changesets}" >> "${GITHUB_OUTPUT}"
+
       - name: Version or publish with Changesets
         id: changesets
+        if: >
+          steps.pending-changesets.outputs.present != 'true' ||
+          steps.release-pr-token.outputs.available == 'true'
         uses: changesets/action@v1
         with:
           version: pnpm run version:changesets
@@ -81,6 +110,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.CHANGESETS_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Update Changesets release branch
+        if: >
+          steps.pending-changesets.outputs.present == 'true' &&
+          steps.release-pr-token.outputs.available != 'true'
+        shell: bash
+        env:
+          RELEASE_BRANCH: changeset-release/main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${RELEASE_BRANCH}"
+          git reset --hard "${GITHUB_SHA}"
+          pnpm run version:changesets
+          pnpm run gen:all
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No version changes were generated."
+            exit 0
+          fi
+          git add .
+          git commit --no-verify -m "Version Packages"
+          git push origin "HEAD:${RELEASE_BRANCH}" --force
+          {
+            echo "### Changesets release branch updated"
+            echo
+            echo "GitHub Actions cannot create pull requests under the current organization policy."
+            echo "Open a pull request from \`${RELEASE_BRANCH}\` into \`${GITHUB_REF_NAME}\` to continue the release."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Read published package version
         id: package-version
