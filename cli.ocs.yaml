@@ -2,7 +2,7 @@ $schema: https://opencli.org/draft.json
 opencli: "0.1"
 info:
   title: eprospera
-  version: "0.1.1"
+  version: "0.1.2"
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
@@ -24,7 +24,8 @@ command:
     - name: --json
       recursive: true
       group: Output
-      description: Pretty-print JSON to stdout and suppress color, spinners, and incidental output.
+      description: Pretty-print JSON to stdout and suppress color, spinners, and
+        incidental output.
     - name: --raw
       recursive: true
       group: Output
@@ -42,7 +43,7 @@ command:
       group: Output
       description: Suppress incidental human output.
     - name: --yes
-      aliases: [-y]
+      aliases: [ -y ]
       recursive: true
       group: Interaction
       description: Skip confirmation prompts.
@@ -59,7 +60,7 @@ command:
       group: Execution
       description: Validate locally and print the request that would be sent.
     - name: --help
-      aliases: [-h]
+      aliases: [ -h ]
       recursive: true
       group: Help
       description: Show help for a command.
@@ -85,7 +86,8 @@ command:
     - code: 3
       description: Authentication failure, including 401 or no credential configured.
     - code: 4
-      description: Authorization failure, including missing scope or revoked Manifestation of Will.
+      description: Authorization failure, including missing scope or revoked
+        Manifestation of Will.
     - code: 5
       description: Resource not found, usually 404.
     - code: 6
@@ -116,7 +118,7 @@ command:
             - name: requiredScope
               value: agent:verify_rpn
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: search
           description: Search the legal-entity registry by name or partial RPN.
           arguments:
@@ -131,7 +133,7 @@ command:
             - name: requiredScope
               value: agent:registry.search
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: get
           description: Fetch one legal entity by UUID.
           arguments:
@@ -146,7 +148,7 @@ command:
             - name: requiredScope
               value: agent:entity.read
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: documents
           description: Fetch documents for one legal entity.
           arguments:
@@ -154,28 +156,30 @@ command:
               required: true
               description: Legal entity UUID.
           examples:
-            - eprospera --json entity documents 00000000-0000-4000-8000-000000000000
+            - eprospera --json entity documents
+              00000000-0000-4000-8000-000000000000
           metadata:
             - name: endpoint
               value: GET /api/v1/legal_entities/{id}/documents
             - name: requiredScope
               value: agent:entity.documents.read
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
     - name: application
       description: Create, pay, list, inspect, and watch legal-entity applications.
       commands:
         - name: list
           description: List API-created legal-entity applications visible to the credential.
           examples:
-            - eprospera --json application list --fields id,statusId,legalEntityId
+            - eprospera --json application list --fields
+              id,statusId,legalEntityId
           metadata:
             - name: endpoint
               value: GET /api/v1/legal_entity_applications
             - name: requiredScope
               value: agent:entity.application.read
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: create
           description: Create a legal-entity application from a JSON request file.
           interactive: true
@@ -194,7 +198,7 @@ command:
             - name: requiredScope
               value: agent:entity.application.create
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: get
           description: Fetch one legal-entity application by UUID.
           arguments:
@@ -202,14 +206,15 @@ command:
               required: true
               description: Legal entity application UUID.
           examples:
-            - eprospera --json application get 00000000-0000-4000-8000-000000000000
+            - eprospera --json application get
+              00000000-0000-4000-8000-000000000000
           metadata:
             - name: endpoint
               value: GET /api/v1/legal_entity_applications/{id}
             - name: requiredScope
               value: agent:entity.application.read
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: pay
           description: Apply a fully covering coupon to a legal-entity application.
           interactive: true
@@ -226,16 +231,18 @@ command:
                   required: true
                   description: Coupon code.
           examples:
-            - eprospera --json --yes application pay 00000000-0000-4000-8000-000000000000 --coupon EXAMPLE_COUPON
+            - eprospera --json --yes application pay
+              00000000-0000-4000-8000-000000000000 --coupon EXAMPLE_COUPON
           metadata:
             - name: endpoint
               value: POST /api/v1/legal_entity_applications/{id}/pay/coupon
             - name: requiredScope
               value: agent:entity.application.pay
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: watch
-          description: Poll an application until approval, rejection, payment failure, or timeout.
+          description: Poll an application until approval, rejection, payment failure, or
+            timeout.
           arguments:
             - name: id
               required: true
@@ -260,14 +267,15 @@ command:
                   required: true
                   description: Duration such as 5m.
           examples:
-            - eprospera --json application watch 00000000-0000-4000-8000-000000000000 --timeout 30m
+            - eprospera --json application watch
+              00000000-0000-4000-8000-000000000000 --timeout 30m
           metadata:
             - name: endpoint
               value: GET /api/v1/legal_entity_applications/{id}
             - name: requiredScope
               value: agent:entity.application.read
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
     - name: me
       description: Read profile data for the Agent Key owner or OAuth user.
       commands:
@@ -283,9 +291,10 @@ command:
             - name: oauthScope
               value: eprospera:person.details.read
             - name: credentialTypes
-              value: [ak, oauth]
+              value: [ ak, oauth ]
         - name: residency
-          description: Fetch current or historical residency status for the credential owner.
+          description: Fetch current or historical residency status for the credential
+            owner.
           examples:
             - eprospera --json me residency
           metadata:
@@ -296,7 +305,7 @@ command:
             - name: oauthScope
               value: eprospera:person.residency.read
             - name: credentialTypes
-              value: [ak, oauth]
+              value: [ ak, oauth ]
         - name: id-verification
           description: Fetch ID-verification artifact URLs for the credential owner.
           examples:
@@ -309,7 +318,7 @@ command:
             - name: oauthScope
               value: eprospera:person.id_verification.read
             - name: credentialTypes
-              value: [ak, oauth]
+              value: [ ak, oauth ]
     - name: auth
       description: Log in, inspect, and remove local credentials.
       commands:
@@ -331,17 +340,19 @@ command:
             - eprospera auth login --agent-key --scopes agent:person.details.read
           metadata:
             - name: credentialTypes
-              value: [ak, sk]
+              value: [ ak, sk ]
         - name: whoami
-          description: Show the currently resolved credential kind and optional API identity metadata.
+          description: Show the currently resolved credential kind and optional API
+            identity metadata.
           options:
             - name: --verify
-              description: Verify the credential against an API identity endpoint when available.
+              description: Verify the credential against an API identity endpoint when
+                available.
           examples:
             - eprospera --json auth whoami
           metadata:
             - name: credentialTypes
-              value: [ak, sk, oauth]
+              value: [ ak, sk, oauth ]
         - name: logout
           description: Delete locally stored credentials.
           interactive: true
@@ -349,7 +360,7 @@ command:
             - eprospera --yes auth logout
           metadata:
             - name: credentialTypes
-              value: [ak, sk, oauth]
+              value: [ ak, sk, oauth ]
     - name: config
       description: Read and write local CLI configuration.
       commands:

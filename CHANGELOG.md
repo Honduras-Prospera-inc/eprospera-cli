@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- 0693b3c: Align package manager metadata and OpenCLI schema version with the published package.
+- f052ca8: Clarify `auth whoami` scope-cache output and add `auth whoami --verify` for explicit API identity checks where supported.
+- 00c0f56: Let one-off Agent Keys from `--api-key` and `EPROSPERA_API_KEY` defer scope authorization to the API when no cached scope metadata is available. Release versioning now also keeps the OpenCLI schema version in sync with the package version.
+
 All notable changes to `@prospera/eprospera-cli` will be documented in this
 file. This file is managed by [Changesets](https://github.com/changesets/changesets);
 do not edit it by hand. To propose a change to published behavior, run
