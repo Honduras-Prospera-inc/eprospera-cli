@@ -132,6 +132,48 @@ describe("scope checks", () => {
     ).toEqual({ ok: true });
   });
 
+  it("restricts standard-key-only commands to sk credentials", () => {
+    expect(
+      checkCommandScope("application.checkout", {
+        kind: "sk",
+        scopes: [],
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      checkCommandScope("referral.list", {
+        kind: "sk",
+        scopes: [],
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      thrownBy(() =>
+        checkCommandScope("application.checkout", {
+          kind: "ak",
+          scopes: [],
+          source: "env",
+        }),
+      ),
+    ).toMatchObject({
+      code: "UNSUPPORTED_CREDENTIAL_TYPE",
+      exitCode: ExitCodes.Authorization,
+    });
+
+    expect(
+      thrownBy(() =>
+        checkCommandScope("referral.list", {
+          kind: "ak",
+          scopes: [],
+          source: "env",
+        }),
+      ),
+    ).toMatchObject({
+      code: "UNSUPPORTED_CREDENTIAL_TYPE",
+      exitCode: ExitCodes.Authorization,
+    });
+  });
+
   it("checks OAuth scopes when a command supports OAuth credentials", () => {
     expect(
       checkCommandScope("me.profile", {
@@ -169,6 +211,10 @@ describe("scope checks", () => {
   it("does not require credentials for local utility commands", () => {
     expect(checkCommandScope("schema", undefined)).toEqual({ ok: true });
     expect(checkCommandScope("config.get", undefined)).toEqual({ ok: true });
+  });
+
+  it("does not require credentials for visitor pass applications", () => {
+    expect(checkCommandScope("visitor-pass.create", undefined)).toEqual({ ok: true });
   });
 });
 

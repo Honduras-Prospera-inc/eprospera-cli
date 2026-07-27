@@ -1,5 +1,10 @@
 # eprospera-cli
 
+[![npm version](https://img.shields.io/npm/v/@prospera/eprospera-cli.svg)](https://www.npmjs.com/package/@prospera/eprospera-cli)
+[![npm downloads](https://img.shields.io/npm/dm/@prospera/eprospera-cli.svg)](https://www.npmjs.com/package/@prospera/eprospera-cli)
+
+**Package registry:** [`@prospera/eprospera-cli` on npm](https://www.npmjs.com/package/@prospera/eprospera-cli)
+
 TypeScript command-line interface for the e-Prospera public API.
 
 `eprospera` is designed for scriptable legal-entity, application, identity, auth,
@@ -35,13 +40,15 @@ pnpm run build
 
 ## Command Surface
 
-The v0.1 command surface is defined in `cli.ocs.yaml`.
+The command surface is defined in `cli.ocs.yaml`.
 
 | Area | Commands |
 | --- | --- |
 | Legal entities | `entity verify`, `entity search`, `entity get`, `entity documents` |
-| Applications | `application list`, `application create`, `application get`, `application pay`, `application watch` |
+| Applications | `application list`, `application create`, `application get`, `application pay`, `application checkout`, `application watch` |
 | Current user | `me profile`, `me residency`, `me id-verification` |
+| Referrals | `referral list` |
+| Visitor passes | `visitor-pass create` |
 | Auth | `auth login`, `auth whoami`, `auth logout` |
 | Config | `config get`, `config set`, `config list`, `config unset` |
 | Shells | `completion bash`, `completion zsh`, `completion fish`, `completion powershell` |

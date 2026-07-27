@@ -459,7 +459,44 @@ describe("CLI runtime", () => {
 
   it("uses --yes to bypass interactive write confirmations", async () => {
     let prompted = false;
-    let paid = false;
+    let requestUrl: string | undefined;
+    let requestBody: string | undefined;
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "application",
+        "pay",
+        "00000000-0000-4000-8000-000000000000",
+        "--voucher",
+        "FOUNDER100",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        promptConfirm: async () => {
+          prompted = true;
+          return false;
+        },
+        fetch: async (request) => {
+          requestUrl = request.url;
+          requestBody = await request.text();
+          return Response.json({ data: { id: "app-1", statusId: "Paid" } });
+        },
+      },
+      { stdinTty: true, stdoutTty: true, stderrTty: true },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(prompted).toBe(false);
+    expect(requestUrl).toBe(
+      "https://api.test/api/v1/legal_entity_applications/00000000-0000-4000-8000-000000000000/pay/voucher",
+    );
+    expect(JSON.parse(requestBody ?? "{}")).toEqual({ voucherCode: "FOUNDER100" });
+  });
+
+  it("keeps --coupon as a deprecated alias for --voucher", async () => {
+    let requestUrl: string | undefined;
+    let requestBody: string | undefined;
     const result = await runCommand(
       [
         "--json",
@@ -472,21 +509,363 @@ describe("CLI runtime", () => {
       ],
       {
         env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
-        promptConfirm: async () => {
-          prompted = true;
-          return false;
-        },
-        fetch: async () => {
-          paid = true;
+        fetch: async (request) => {
+          requestUrl = request.url;
+          requestBody = await request.text();
           return Response.json({ data: { id: "app-1", statusId: "Paid" } });
         },
       },
-      { stdinTty: true, stdoutTty: true, stderrTty: true },
     );
 
     expect(result.exitCode).toBe(0);
-    expect(prompted).toBe(false);
-    expect(paid).toBe(true);
+    expect(requestUrl).toContain("/pay/voucher");
+    expect(JSON.parse(requestBody ?? "{}")).toEqual({ voucherCode: "FOUNDER100" });
+    expect(result.stderr).toContain("--coupon is deprecated");
+    expect(JSON.parse(result.stdout)).toEqual({ data: { id: "app-1", statusId: "Paid" } });
+  });
+
+  it("requires exactly one of --voucher or --coupon for application pay", async () => {
+    for (const args of [
+      ["application", "pay", "00000000-0000-4000-8000-000000000000"],
+      [
+        "application",
+        "pay",
+        "00000000-0000-4000-8000-000000000000",
+        "--voucher",
+        "A",
+        "--coupon",
+        "B",
+      ],
+    ]) {
+      const result = await runCommand(["--json", "--yes", ...args], {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async () => {
+          throw new Error("network should not be called");
+        },
+      });
+
+      expect(result.exitCode).toBe(2);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "INVALID_USAGE" },
+      });
+    }
+  });
+
+  it("creates hosted checkout sessions with standard keys", async () => {
+    let requestUrl: string | undefined;
+    let requestBody: string | undefined;
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "application",
+        "checkout",
+        "00000000-0000-4000-8000-000000000000",
+        "--redirect-url",
+        "https://example.test/return",
+        "--provider",
+        "stripe",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async (request) => {
+          requestUrl = request.url;
+          requestBody = await request.text();
+          return Response.json({
+            data: { url: "https://pay.example.test/session" },
+            invoiceId: "00000000-0000-4000-8000-00000000aaaa",
+          });
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe(
+      "https://api.test/api/v1/legal_entity_applications/00000000-0000-4000-8000-000000000000/checkout_session",
+    );
+    expect(JSON.parse(requestBody ?? "{}")).toEqual({
+      redirectUrl: "https://example.test/return",
+      paymentProvider: "stripe",
+    });
+    expect(JSON.parse(result.stdout)).toEqual({
+      data: { url: "https://pay.example.test/session" },
+      invoiceId: "00000000-0000-4000-8000-00000000aaaa",
+    });
+  });
+
+  it("passes payment-method JSON through to checkout sessions", async () => {
+    let requestBody: string | undefined;
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "application",
+        "checkout",
+        "00000000-0000-4000-8000-000000000000",
+        "--redirect-url",
+        "https://example.test/return",
+        "--payment-method",
+        '{"asset":"BTC","network":"bitcoin","rail":"lightning"}',
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async (request) => {
+          requestBody = await request.text();
+          return Response.json({ data: { url: "https://pay.example.test" }, invoiceId: "i-1" });
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(requestBody ?? "{}")).toEqual({
+      redirectUrl: "https://example.test/return",
+      paymentMethod: { asset: "BTC", network: "bitcoin", rail: "lightning" },
+    });
+  });
+
+  it("requires exactly one of --provider or --payment-method for checkout", async () => {
+    for (const extraArgs of [
+      [],
+      ["--provider", "stripe", "--payment-method", '{"asset":"BTC"}'],
+    ] as const) {
+      const result = await runCommand(
+        [
+          "--json",
+          "--yes",
+          "application",
+          "checkout",
+          "00000000-0000-4000-8000-000000000000",
+          "--redirect-url",
+          "https://example.test/return",
+          ...extraArgs,
+        ],
+        {
+          env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+          fetch: async () => {
+            throw new Error("network should not be called");
+          },
+        },
+      );
+
+      expect(result.exitCode).toBe(2);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "INVALID_USAGE" },
+      });
+    }
+  });
+
+  it("rejects Agent Keys for checkout before calling the API", async () => {
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "application",
+        "checkout",
+        "00000000-0000-4000-8000-000000000000",
+        "--redirect-url",
+        "https://example.test/return",
+        "--provider",
+        "stripe",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+        fetch: async () => {
+          throw new Error("network should not be called");
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "UNSUPPORTED_CREDENTIAL_TYPE" },
+    });
+  });
+
+  it("maps upstream 503 checkout responses to a clear error", async () => {
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "--skip-scope-check",
+        "application",
+        "checkout",
+        "00000000-0000-4000-8000-000000000000",
+        "--redirect-url",
+        "https://example.test/return",
+        "--provider",
+        "stripe",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        retry: { maxRetries: 0 },
+        fetch: async () =>
+          Response.json(
+            { error: "Checkout sessions via Agent Keys are temporarily disabled." },
+            { status: 503 },
+          ),
+      },
+    );
+
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "AGENT_CHECKOUT_DISABLED", httpStatus: 503 },
+    });
+  });
+
+  it("lists referrals for a referral code with standard keys", async () => {
+    let requestUrl: string | undefined;
+    const result = await runCommand(["--json", "referral", "list", "CATALYST2026"], {
+      env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async (request) => {
+        requestUrl = request.url;
+        return Response.json({
+          code: "CATALYST2026",
+          naturalPersons: [{ fullName: "Ada Lovelace", referredAt: "2026-07-01T00:00:00.000Z" }],
+          legalEntities: [],
+        });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe("https://api.test/api/v1/referral-codes/CATALYST2026/referrals");
+    expect(JSON.parse(result.stdout)).toMatchObject({ code: "CATALYST2026" });
+  });
+
+  it("rejects Agent Keys for referral list before calling the API", async () => {
+    const result = await runCommand(["--json", "referral", "list", "CATALYST2026"], {
+      env: { EPROSPERA_API_KEY: "ak-test", EPROSPERA_BASE_URL: "https://api.test" },
+      fetch: async () => {
+        throw new Error("network should not be called");
+      },
+    });
+
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "UNSUPPORTED_CREDENTIAL_TYPE" },
+    });
+  });
+
+  it("submits visitor pass applications without any credential", async () => {
+    let requestUrl: string | undefined;
+    let requestBody: string | undefined;
+    let authorization: string | null = "unset";
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "visitor-pass",
+        "create",
+        "--first-name",
+        "Ada",
+        "--last-name",
+        "Lovelace",
+        "--date-of-birth",
+        "1990-01-01",
+        "--email",
+        "ada@example.test",
+        "--signature",
+        "Ada Lovelace",
+        "--consent-to-background-check",
+        "--referral-source",
+        "Prospera website",
+      ],
+      {
+        env: { EPROSPERA_API_KEY: "sk-test", EPROSPERA_BASE_URL: "https://api.test" },
+        loadStoredCredential: async () => undefined,
+        fetch: async (request) => {
+          requestUrl = request.url;
+          requestBody = await request.text();
+          authorization = request.headers.get("authorization");
+          return Response.json({ success: true, data: { ok: true } });
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe("https://api.test/api/v1/visitor_pass_applications");
+    expect(authorization).toBeNull();
+    expect(JSON.parse(requestBody ?? "{}")).toEqual({
+      firstName: "Ada",
+      lastName: "Lovelace",
+      dateOfBirth: "1990-01-01",
+      email: "ada@example.test",
+      signature: "Ada Lovelace",
+      consentToBackgroundCheck: true,
+      referralSource: "Prospera website",
+    });
+    expect(JSON.parse(result.stdout)).toEqual({ success: true, data: { ok: true } });
+  });
+
+  it("rejects visitor pass applications without background-check consent", async () => {
+    const result = await runCommand(
+      [
+        "--json",
+        "--yes",
+        "visitor-pass",
+        "create",
+        "--first-name",
+        "Ada",
+        "--last-name",
+        "Lovelace",
+        "--date-of-birth",
+        "1990-01-01",
+        "--email",
+        "ada@example.test",
+        "--signature",
+        "Ada Lovelace",
+        "--referral-source",
+        "Prospera website",
+      ],
+      {
+        fetch: async () => {
+          throw new Error("network should not be called");
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "INVALID_USAGE" },
+    });
+  });
+
+  it("prints visitor pass dry-runs without credentials or network", async () => {
+    const result = await runCommand(
+      [
+        "--json",
+        "visitor-pass",
+        "create",
+        "--first-name",
+        "Ada",
+        "--last-name",
+        "Lovelace",
+        "--date-of-birth",
+        "1990-01-01",
+        "--email",
+        "ada@example.test",
+        "--signature",
+        "Ada Lovelace",
+        "--consent-to-background-check",
+        "--referral-source",
+        "Prospera website",
+        "--dry-run",
+      ],
+      {
+        loadStoredCredential: async () => undefined,
+        fetch: async () => {
+          throw new Error("network should not be called");
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      dryRun: true,
+      request: {
+        method: "POST",
+        path: "/api/v1/visitor_pass_applications",
+      },
+    });
   });
 
   it("prints application create dry-runs without credentials or network", async () => {

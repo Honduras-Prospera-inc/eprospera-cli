@@ -5,8 +5,8 @@ description: Use when working with the e-Prospera CLI, Agent Keys, legal entitie
 
 # eProspera CLI
 
-Use the e-Prospera CLI for API-backed entity, application, identity, auth,
-configuration, completion, and schema workflows.
+Use the e-Prospera CLI for API-backed entity, application, identity, referral,
+visitor pass, auth, configuration, completion, and schema workflows.
 
 ## Command selection
 
@@ -63,18 +63,42 @@ eprospera schema
 Save an Agent Key:
 
 ```sh
-eprospera auth login --agent-key --scopes agent:person.details.read
+eprospera auth login --agent-key --scopes agent:person.details.read,agent:entity.application.create,agent:entity.application.pay,agent:entity.application.read
 ```
 
-Create and watch an application:
+Create, pay, and watch an application:
 
 ```sh
 eprospera --json --yes application create --file application.json
+eprospera --json --yes application pay <application-id> --voucher <code>
 eprospera --json application watch <application-id> --timeout 30m
+```
+
+Create a hosted checkout session (standard `sk-` API keys only; hand `data.url`
+to a human):
+
+```sh
+eprospera --json --yes application checkout <application-id> \
+  --redirect-url https://example.com/return --provider stripe
 ```
 
 Read current user profile:
 
 ```sh
 eprospera --json --fields id,fullName,email me profile
+```
+
+List referral-code attribution (standard `sk-` API keys only):
+
+```sh
+eprospera --json referral list <code>
+```
+
+Submit a visitor pass application (no credential required; consent flag is
+mandatory):
+
+```sh
+eprospera --json --yes visitor-pass create --first-name <name> --last-name <name> \
+  --date-of-birth YYYY-MM-DD --email <address> --signature "<full legal name>" \
+  --consent-to-background-check --referral-source "<text>"
 ```

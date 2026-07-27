@@ -3,9 +3,10 @@
 ## TL;DR
 
 `eprospera` is a JSON-first CLI for the e-Prospera public API. Use it to verify
-entities, inspect applications, read current-user data, and create or monitor
-legal-entity applications. This guide reflects `@prospera/eprospera-cli@0.1.1`
-and later.
+entities, inspect applications, read current-user data, create or monitor
+legal-entity applications, pay with vouchers or hosted checkout, inspect
+referral-code attribution, and submit visitor pass applications. This guide
+reflects `@prospera/eprospera-cli@0.2.0` and later.
 
 Most agent workflows use these commands:
 
@@ -34,11 +35,14 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | `application list` | `ak`, `sk` | `agent:entity.application.read` | `0,3,4,7,9` | Credential cannot see the target application. |
 | `application create --file <path>` | `ak`, `sk` | `agent:entity.application.create` | `0,2,3,4,7,8,9` | JSON body fails local schema validation. |
 | `application get <id>` | `ak`, `sk` | `agent:entity.application.read` | `0,2,3,4,5,7,9` | ID must be a UUID. |
-| `application pay <id> --coupon <code>` | `ak`, `sk` | `agent:entity.application.pay` | `0,2,3,4,5,6,7,8,9,10` | Coupon does not fully cover payment. |
+| `application pay <id> --voucher <code>` | `ak`, `sk` | `agent:entity.application.pay` | `0,2,3,4,5,6,7,8,9,10` | Voucher does not fully cover payment. `--coupon` is a deprecated alias. |
+| `application checkout <id> --redirect-url <url>` | `sk` | none | `0,2,3,4,5,7,8,9` | Agent Keys cannot create checkout sessions. Provide exactly one of `--provider` or `--payment-method`. |
 | `application watch <id>` | `ak`, `sk` | `agent:entity.application.read` | `0,2,3,4,5,7,9,10` | Application reaches rejection or payment failure. |
 | `me profile` | `ak`, `oauth` | `agent:person.details.read` | `0,3,4,7,9` | Standard API keys are not valid for `me` commands. |
 | `me residency` | `ak`, `oauth` | `agent:person.residency.read` | `0,3,4,7,9` | Missing residency-read scope. |
 | `me id-verification` | `ak`, `oauth` | `agent:person.id_verification.read` | `0,3,4,7,9` | Missing ID-verification scope. |
+| `referral list <code>` | `sk` | none | `0,2,3,4,5,7,9` | Agent Keys are not valid for referral commands. |
+| `visitor-pass create` | none | none | `0,2,7,8,9` | Missing `--consent-to-background-check`. |
 | `auth login` | `ak`, `sk` | none | `0,2,3` | Choose exactly one of `--agent-key` or `--standard-key`. |
 | `auth whoami` | `ak`, `sk`, `oauth` | none | `0,3` | No credential is configured. |
 | `auth logout` | `ak`, `sk`, `oauth` | none | `0` | None. |
@@ -64,6 +68,9 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | A legal entity UUID | Fetch entity details | `eprospera --json entity get <id>` |
 | A request JSON file | Create an application | `eprospera --json --yes application create --file application.json` |
 | An application UUID | Poll until approved or failed | `eprospera --json application watch <id> --timeout 30m` |
+| An application UUID and an `sk-` key | Send a human to a hosted payment page | `eprospera --json --yes application checkout <id> --redirect-url <url> --provider stripe` |
+| A referral code and an `sk-` key | See who used the code | `eprospera --json referral list <code>` |
+| Visitor details and consent | Submit a visitor pass with no credential | `eprospera --json --yes visitor-pass create ...` |
 | An unclear command | Inspect command metadata | `eprospera schema` |
 
 ## Invocation Rules
@@ -178,9 +185,42 @@ Credential: Agent Key or standard API key with
 `agent:entity.application.pay` and `agent:entity.application.read`.
 
 ```sh
-eprospera --json --yes application pay "$APPLICATION_ID" --coupon "$COUPON_CODE"
+eprospera --json --yes application pay "$APPLICATION_ID" --voucher "$VOUCHER_CODE"
 eprospera --json application watch "$APPLICATION_ID" --timeout 30m
 ```
 
+The voucher must fully cover the invoice. `--coupon` remains as a deprecated
+alias that sends the code as `voucherCode` and warns on stderr.
+
 `application watch` emits newline-delimited JSON whenever the status changes.
 Treat exit code `10` as terminal failure and do not retry without new user input.
+
+### 6. Hand Off Payment Through Hosted Checkout
+
+Credential: standard API key only. Agent Keys are rejected locally with exit
+code `4`; upstream disables Agent Key checkout.
+
+```sh
+eprospera --json --yes application checkout "$APPLICATION_ID" \
+  --redirect-url "https://example.com/return" --provider stripe
+```
+
+Provide exactly one of `--provider <name>` or `--payment-method <json>`
+(a payment-intent JSON object, for example
+`'{"asset":"BTC","network":"bitcoin","rail":"lightning"}'`). Parse `data.url`
+from stdout and hand that URL to a human to complete payment, then poll with
+`application watch`.
+
+### 7. Submit a Visitor Pass Application
+
+No credential required. This is the only unauthenticated write in the API.
+
+```sh
+eprospera --json --yes visitor-pass create \
+  --first-name Ada --last-name Lovelace --date-of-birth 1990-01-01 \
+  --email ada@example.test --signature "Ada Lovelace" \
+  --consent-to-background-check --referral-source "Prospera website"
+```
+
+The API rejects applications without `--consent-to-background-check`. The
+signature is the applicant's typed full legal name.

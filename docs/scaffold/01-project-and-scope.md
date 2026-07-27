@@ -51,9 +51,12 @@ The v0.1 repository should be production-ready and open source from day one:
 
 - MCP server wrapper. Track for v0.2 as `eprospera mcp serve`.
 - Hosted-checkout payment flows using `/checkout_session`; upstream has
-  temporarily disabled this for Agent Keys.
+  temporarily disabled this for Agent Keys. Shipped in v0.2.0 as
+  `application checkout` for standard API keys only.
 - `/api/v1/me/legal-entities*` OAuth-only subcommands. Wire auth in v0.1, but
   defer these commands until v0.3.
+- Partner Keys (`pk-`) residency application commands; deferred by decision on
+  2026-07-27.
 - Telemetry.
 - Plugin system.
 - Alternate output formats such as YAML or CSV.

@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-05-26
+Last updated: 2026-07-27
 
 This file tracks what has been implemented, what remains, and implementation
 notes that should survive across agent sessions.
@@ -65,6 +65,21 @@ notes that should survive across agent sessions.
   - `auth whoami` reports whether scopes are cached locally
   - `auth whoami --verify` performs explicit API identity checks where supported
   - Changesets versioning syncs `cli.ocs.yaml` and regenerates command docs
+- Step 13: API coverage refresh for v0.2.0 (2026-07-27):
+  - regenerated `src/api/generated.ts` from the current published spec
+    (18 → 35 paths, now with operation ids)
+  - migrated `application pay` to the canonical `/pay/voucher` endpoint with a
+    new `--voucher` flag; `--coupon` remains a deprecated alias that warns on
+    stderr (upstream deprecated `/pay/coupon` on 2026-06-11)
+  - added `application checkout` for hosted checkout sessions (standard API
+    keys only; Agent Keys are rejected locally and upstream returns 503)
+  - added `referral list` for Catalyst referral-code attribution (standard API
+    keys only)
+  - added `visitor-pass create`, the API's only unauthenticated write, using a
+    new credential-free runtime context that never sends an Authorization
+    header
+  - leaf command count is now 27; unit tests cover the new commands, scope
+    restrictions, idempotency-key behavior, and the coupon deprecation path
 
 ## Remaining Build Plan
 
@@ -75,7 +90,14 @@ notes that should survive across agent sessions.
 
 ## Current Caveats
 
-- `@prospera/eprospera-cli@0.1.1` is published and installable from npm.
+- `@prospera/eprospera-cli@0.1.2` is the latest published npm version; the
+  v0.2.0 surface (voucher pay, checkout, referrals, visitor passes) is pending
+  the next Changesets release.
+- Deferred coverage, by decision (2026-07-27): the Partner Keys (`pk-`)
+  residency application API (10 operations, cursor pagination, Idempotency-Key
+  and expectedVersion contracts) and OAuth login (`auth login --oauth` PKCE)
+  with the OAuth-only `/api/v1/me/legal-entities*` commands. The CLI's `oauth`
+  credential kind remains unreachable until OAuth login is implemented.
 - npm package access status is public under the `prospera` org.
 - npm trusted publishing is configured for GitHub Actions repository
   `Honduras-Prospera-inc/eprospera-cli`, workflow file `release.yml`, and

@@ -69,8 +69,13 @@ describe("cli.ocs.yaml", () => {
     }
   });
 
-  it("covers the v0.1 command surface", () => {
-    expect(leafCommands(document.command)).toHaveLength(24);
+  it("covers the current command surface", () => {
+    expect(leafCommands(document.command)).toHaveLength(27);
+
+    const commandIds = leafCommandIds(document.command);
+    for (const commandId of ["application.checkout", "referral.list", "visitor-pass.create"]) {
+      expect(commandIds).toContain(commandId);
+    }
   });
 
   it("matches the Commander command registration", () => {

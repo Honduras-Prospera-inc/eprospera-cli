@@ -43,6 +43,9 @@ const commandScopes = {
     requiredScope: "agent:entity.application.read",
     credentialTypes: ["ak", "sk"],
   },
+  "application.checkout": {
+    credentialTypes: ["sk"],
+  },
   "me.profile": {
     requiredScope: "agent:person.details.read",
     oauthScope: "eprospera:person.details.read",
@@ -58,6 +61,10 @@ const commandScopes = {
     oauthScope: "eprospera:person.id_verification.read",
     credentialTypes: ["ak", "oauth"],
   },
+  "referral.list": {
+    credentialTypes: ["sk"],
+  },
+  "visitor-pass.create": {},
   "auth.login": {
     credentialTypes: ["ak", "sk"],
   },

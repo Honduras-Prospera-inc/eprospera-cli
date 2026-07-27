@@ -97,7 +97,7 @@ describe("api request behavior", () => {
     const capturedHeaders: Record<string, string | null> = {};
 
     server.use(
-      http.post(`${baseUrl}/api/v1/legal_entity_applications/:id/pay/coupon`, ({ request }) => {
+      http.post(`${baseUrl}/api/v1/legal_entity_applications/:id/pay/voucher`, ({ request }) => {
         capturedHeaders.authorization = request.headers.get("authorization");
         capturedHeaders.idempotencyKey = request.headers.get("idempotency-key");
         return HttpResponse.json({ success: true, data: { id, statusId: "Draft" } });
@@ -111,14 +111,77 @@ describe("api request behavior", () => {
       retry: { maxRetries: 0 },
     });
 
-    await api.raw.POST("/api/v1/legal_entity_applications/{id}/pay/coupon", {
+    await api.raw.POST("/api/v1/legal_entity_applications/{id}/pay/voucher", {
       params: { path: { id } },
-      body: { couponCode: "FOUNDER100" },
+      body: { voucherCode: "FOUNDER100" },
     });
 
     expect(capturedHeaders).toEqual({
       authorization: "Bearer ak-test",
       idempotencyKey: "idem-test",
+    });
+  });
+
+  it("injects idempotency keys on checkout session writes", async () => {
+    let idempotencyKey: string | null = null;
+
+    server.use(
+      http.post(
+        `${baseUrl}/api/v1/legal_entity_applications/:id/checkout_session`,
+        ({ request }) => {
+          idempotencyKey = request.headers.get("idempotency-key");
+          return HttpResponse.json({ data: { url: "https://pay.example.test" }, invoiceId: id });
+        },
+      ),
+    );
+
+    const api = createApiClient({
+      baseUrl,
+      token: "sk-test",
+      idempotencyKey: () => "idem-test",
+      retry: { maxRetries: 0 },
+    });
+
+    await api.raw.POST("/api/v1/legal_entity_applications/{id}/checkout_session", {
+      params: { path: { id } },
+      body: { redirectUrl: "https://example.test/return", paymentProvider: "stripe" },
+    });
+
+    expect(idempotencyKey).toBe("idem-test");
+  });
+
+  it("does not inject idempotency keys on visitor pass writes", async () => {
+    const captured: Record<string, string | null> = {};
+
+    server.use(
+      http.post(`${baseUrl}/api/v1/visitor_pass_applications`, ({ request }) => {
+        captured.idempotencyKey = request.headers.get("idempotency-key");
+        captured.authorization = request.headers.get("authorization");
+        return HttpResponse.json({ success: true, data: { ok: true } });
+      }),
+    );
+
+    const api = createApiClient({
+      baseUrl,
+      idempotencyKey: () => "idem-test",
+      retry: { maxRetries: 0 },
+    });
+
+    await api.raw.POST("/api/v1/visitor_pass_applications", {
+      body: {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        dateOfBirth: "1990-01-01",
+        email: "ada@example.test",
+        signature: "Ada Lovelace",
+        consentToBackgroundCheck: true,
+        referralSource: "Prospera website",
+      },
+    });
+
+    expect(captured).toEqual({
+      idempotencyKey: null,
+      authorization: null,
     });
   });
 

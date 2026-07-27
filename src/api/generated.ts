@@ -15,44 +15,17 @@ export interface paths {
     put?: never;
     /**
      * Verify whether an RPN exists and is active
-     * @description Rate-limited to 5,000 requests / 24 h and 50 / minute per API key.
+     * @description Look up a Resident Permit Number and report whether it belongs to a
+     *     legal entity, a natural person, or is unknown — and whether the
+     *     resident currently has an active residency.
+     *
+     *     Rate-limited to 5,000 requests per 24 hours and 50 per minute, per
+     *     API key. Exceeding either bound returns `429`.
+     *
+     *     Accepts standard API keys (`sk-`) and Agent Keys (`ak-`) holding the
+     *     `agent:verify_rpn` scope.
      */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/json": {
-            /** @example 80000000000012 */
-            rpn: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Lookup result */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              /** @enum {string} */
-              result: "found_legal_entity" | "found_natural_person" | "not_found";
-              active: boolean;
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        429: components["responses"]["RateLimited"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    post: operations["verifyRpn"];
     delete?: never;
     options?: never;
     head?: never;
@@ -69,50 +42,10 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Free-text search of the legal-entity registry
-     * @description Multi-word queries split on whitespace. Case-insensitive name match plus partial RPN match.
-     *     Rate-limited to 5,000 / 24 h and 50 / minute per API key.
+     * Search the legal-entity registry
+     * @description Performs a case-insensitive name search and partial RPN match. Accepts standard and appropriately scoped Agent Keys.
      */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/json": {
-            /** @example Acme Holdings */
-            query: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Matching legal entities */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              results?: {
-                /** Format: uuid */
-                id?: string;
-                name?: string;
-                extension?: string;
-                residentPermitNumber?: string | null;
-              }[];
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        429: components["responses"]["RateLimited"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    post: operations["searchLegalEntities"];
     delete?: never;
     options?: never;
     head?: never;
@@ -126,39 +59,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /**
-     * Fetch one legal entity
-     * @description Agent Keys can only access entities whose underlying residency application
-     *     was created via the API (`residencyApplication.createdViaAPI === true`).
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["LegalEntityId"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The legal-entity record */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntity"];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get a legal entity */
+    get: operations["getLegalEntity"];
     put?: never;
     post?: never;
     delete?: never;
@@ -174,39 +76,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /**
-     * List documents for a legal entity
-     * @description Not currently paginated — full result set is returned under `data`.
-     *     See https://portal.eprospera.com/api-docs/conventions#pagination.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["LegalEntityId"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Documents for the entity */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["Document"][];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** List documents for a legal entity */
+    get: operations["getLegalEntityDocuments"];
     put?: never;
     post?: never;
     delete?: never;
@@ -222,77 +93,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /**
-     * List legal-entity applications
-     * @description Agent Keys see only API-created applications (`createdViaAPI=true`).
-     *     Not currently paginated.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Applications visible to the caller */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntityApplication"][];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** List legal-entity applications */
+    get: operations["listLegalEntityApplications"];
     put?: never;
-    /**
-     * Create a legal-entity application
-     * @description Write Agent Keys require an active Manifestation of Will. With AOC pre-acceptance
-     *     the application auto-progresses on payment; otherwise `nextSteps.signature` returns
-     *     a browser URL the human must visit.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["CreateLegalEntityApplicationRequest"];
-        };
-      };
-      responses: {
-        /** @description Application created */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntityApplication"];
-              nextSteps?: {
-                /** Format: uri */
-                signature?: string | null;
-              };
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        409: components["responses"]["Conflict"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Create a legal-entity application */
+    post: operations["createLegalEntityApplication"];
     delete?: never;
     options?: never;
     head?: never;
@@ -306,34 +111,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Fetch one application */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["ApplicationId"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Application */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntityApplication"];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get a legal-entity application */
+    get: operations["getLegalEntityApplication"];
     put?: never;
     post?: never;
     delete?: never;
@@ -342,7 +121,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/legal_entity_applications/{id}/pay/coupon": {
+  "/api/v1/legal_entity_applications/{id}/pay/voucher": {
     parameters: {
       query?: never;
       header?: never;
@@ -351,45 +130,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Apply a coupon that fully covers the invoice */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["ApplicationId"];
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/json": {
-            couponCode: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Coupon applied */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              success?: boolean;
-              data?: components["schemas"]["LegalEntityApplication"];
-              message?: string;
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        404: components["responses"]["NotFound"];
-        409: components["responses"]["Conflict"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Pay a legal-entity application with a voucher */
+    post: operations["payLegalEntityApplicationWithVoucher"];
     delete?: never;
     options?: never;
     head?: never;
@@ -405,124 +147,129 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /**
-     * Create a hosted-checkout session for the application invoice
-     * @description Standard API keys only. Agent Key hosted-checkout creation is temporarily disabled;
-     *     use the coupon-payment endpoint or have the resident pay through the portal.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["ApplicationId"];
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/json": {
-            /** @enum {string} */
-            paymentProvider: "stripe" | "stripe-crypto" | "lnbits" | "solana-pay-ptc";
-            /** Format: uri */
-            redirectUrl: string;
-            /** Format: email */
-            email?: string | null;
-          };
-        };
-      };
-      responses: {
-        /** @description Checkout session created */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: {
-                /** Format: uri */
-                url?: string;
-              };
-              /** Format: uuid */
-              invoiceId?: string;
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-        /** @description Agent Key checkout sessions are temporarily disabled */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              error?: string;
-            };
-          };
-        };
-      };
-    };
+    /** Create a hosted checkout session */
+    post: operations["createLegalEntityApplicationCheckout"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/api/v1/referral-codes/{code}/referrals": {
+  "/api/v1/partner/residency_applications": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /**
-     * List referrals for a code you own
-     * @description Standard API keys only — Agent Keys are not supported on this route.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          code: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Referral attribution */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              code?: string;
-              naturalPersons?: {
-                fullName?: string | null;
-                /** Format: date-time */
-                referredAt?: string;
-              }[];
-              legalEntities?: {
-                name?: string;
-                rpn?: string;
-                /** Format: date-time */
-                referredAt?: string | null;
-              }[];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
+    /** List partner residency applications */
+    get: operations["listPartnerResidencyApplications"];
+    put?: never;
+    /** Create a partner residency application */
+    post: operations["createPartnerResidencyApplication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/partner/residency_applications/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** Get a partner residency application */
+    get: operations["getPartnerResidencyApplication"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update a draft partner residency application */
+    patch: operations["updatePartnerResidencyApplication"];
+    trace?: never;
+  };
+  "/api/v1/uploads/proof_of_address": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Upload proof of address */
+    post: operations["uploadProofOfAddress"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/uploads/proof_of_address/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download proof of address */
+    get: operations["downloadProofOfAddress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/partner/residency_applications/{id}/checkout_session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a partner hosted-checkout session */
+    post: operations["createPartnerResidencyApplicationCheckout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/partner/residency_applications/{id}/pay/voucher": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pay a partner application with a voucher */
+    post: operations["payPartnerResidencyApplicationWithVoucher"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/partner/residency_applications/{id}/submit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit a partner residency application */
+    post: operations["submitPartnerResidencyApplication"];
     delete?: never;
     options?: never;
     head?: never;
@@ -536,35 +283,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /**
-     * Personal details for the authenticated user
-     * @description Accepts OAuth tokens (with `eprospera:person.details.read`) and Agent Keys
-     *     (with `agent:person.details.read`). Standard API keys are NOT accepted here.
-     *     Returns `null` if the owner has no approved residency.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Personal details, or null */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["NaturalPerson"] | null;
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get the authenticated natural person */
+    get: operations["getNaturalPerson"];
     put?: never;
     post?: never;
     delete?: never;
@@ -580,30 +300,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** ID-verification artifacts (signed URLs, ~1 h TTL) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description ID verification record */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["IdVerification"];
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get ID-verification artifacts */
+    get: operations["getNaturalPersonIdVerification"];
     put?: never;
     post?: never;
     delete?: never;
@@ -619,41 +317,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Residency status for the authenticated user */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Residency status */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              wasEverResident?: boolean;
-              activeResidency?: {
-                /** Format: date-time */
-                effectiveDate?: string;
-                /** Format: date-time */
-                terminationDate?: string | null;
-                /** @enum {string} */
-                residencyType?: "Limited e-Resident" | "e-Resident" | "Resident";
-                version?: string;
-              } | null;
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        403: components["responses"]["Forbidden"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get natural-person residency status */
+    get: operations["getNaturalPersonResidency"];
     put?: never;
     post?: never;
     delete?: never;
@@ -669,31 +334,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List the user's consented legal entities (OAuth only) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Legal entities the user consented to share */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntitySummary"][];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** List consented legal entities */
+    get: operations["listConsentedLegalEntities"];
     put?: never;
     post?: never;
     delete?: never;
@@ -709,34 +351,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Fetch one consented legal entity (OAuth only) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["LegalEntityId"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The legal-entity record */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["LegalEntity"];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Get a consented legal entity */
+    get: operations["getConsentedLegalEntity"];
     put?: never;
     post?: never;
     delete?: never;
@@ -752,34 +368,79 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List documents for a consented legal entity (OAuth only) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: components["parameters"]["LegalEntityId"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Documents */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              data?: components["schemas"]["Document"][];
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        404: components["responses"]["NotFound"];
-        500: components["responses"]["InternalError"];
-      };
+    /** List documents for a consented legal entity */
+    get: operations["getConsentedLegalEntityDocuments"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/referral-codes/{code}/referrals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** List referrals for a referral code */
+    get: operations["listReferralCodeReferrals"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/visitor_pass_applications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a public Visitor Pass application
+     * @description This endpoint is intentionally unauthenticated. The applicant must provide consent and a signature.
+     */
+    post: operations["createVisitorPassApplication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/.well-known/openid-configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get OpenID Provider metadata */
+    get: operations["getOpenidConfiguration"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth/.well-known/jwks.json": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get OAuth signing keys */
+    get: operations["getOauthJwks"];
     put?: never;
     post?: never;
     delete?: never;
@@ -795,39 +456,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** OAuth 2.0 authorization endpoint (RFC 6749 §4.1) */
-    get: {
-      parameters: {
-        query: {
-          client_id: string;
-          redirect_uri: string;
-          response_type: "code";
-          scope: string;
-          state: string;
-          /** @description Required when `openid` is in `scope`. */
-          nonce?: string;
-          response_mode?: "query" | "fragment" | "form_post";
-          code_challenge?: string;
-          code_challenge_method?: "S256";
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /**
-         * @description Redirects to the consent screen, then to `redirect_uri` with `code` and `state`
-         *     (or `error=access_denied&state=...` on denial).
-         */
-        302: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
+    /** Start the OAuth authorization-code flow */
+    get: operations["oauthAuthorize"];
     put?: never;
     post?: never;
     delete?: never;
@@ -845,63 +475,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** OAuth 2.0 token endpoint */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          "application/x-www-form-urlencoded":
-            | {
-                /** @enum {string} */
-                grant_type: "authorization_code";
-                code: string;
-                /** Format: uri */
-                redirect_uri: string;
-                code_verifier?: string;
-                client_id?: string;
-                client_secret?: string;
-              }
-            | {
-                /** @enum {string} */
-                grant_type: "refresh_token";
-                refresh_token: string;
-                scope?: string;
-                client_id?: string;
-                client_secret?: string;
-              };
-        };
-      };
-      responses: {
-        /** @description Token response (RFC 6749 §5.1) */
-        200: {
-          headers: {
-            "Cache-Control"?: "no-store";
-            Pragma?: "no-cache";
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              access_token: string;
-              /** @enum {string} */
-              token_type: "Bearer";
-              /** @example 3600 */
-              expires_in: number;
-              scope: string;
-              id_token?: string;
-              refresh_token?: string;
-            };
-          };
-        };
-        400: components["responses"]["BadRequest"];
-        401: components["responses"]["Unauthorized"];
-        500: components["responses"]["InternalError"];
-      };
-    };
+    /** Exchange an authorization code or refresh token */
+    post: operations["oauthToken"];
     delete?: never;
     options?: never;
     head?: never;
@@ -915,39 +490,147 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** OIDC userinfo endpoint */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Userinfo claims (subset depends on granted scopes) */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              sub: string;
-              name?: string | null;
-              given_name?: string | null;
-              family_name?: string | null;
-              /** Format: uri */
-              picture?: string | null;
-              /** Format: email */
-              email?: string | null;
-              email_verified?: boolean;
-            };
-          };
-        };
-        401: components["responses"]["Unauthorized"];
-        404: components["responses"]["NotFound"];
-      };
+    /** Get OpenID Connect user claims */
+    get: operations["oauthUserinfo"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    /** Revoke an OAuth token */
+    post: operations["oauthRevoke"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth/introspect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Introspect an OAuth token */
+    post: operations["oauthIntrospect"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/legal_entity_applications/{id}/pay/coupon": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Deprecated legal-entity coupon-payment alias
+     * @deprecated
+     * @description Use `/api/v1/legal_entity_applications/{id}/pay/voucher` with `voucherCode` instead.
+     */
+    post: operations["payLegalEntityApplicationWithCoupon"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/partner/residency_applications/{id}/pay/coupon": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Deprecated partner coupon-payment alias
+     * @deprecated
+     * @description Use `/api/v1/partner/residency_applications/{id}/pay/voucher` with `voucherCode` instead.
+     */
+    post: operations["payPartnerResidencyApplicationWithCoupon"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/natural-person/id_verification": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Deprecated ID-verification underscore alias
+     * @deprecated
+     * @description Use `/api/v1/me/natural-person/id-verification` instead.
+     */
+    get: operations["getNaturalPersonIdVerificationLegacy"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/oauth/.well-known/openid-configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Deprecated OpenID-configuration alias
+     * @deprecated
+     * @description Use `/.well-known/openid-configuration` instead.
+     */
+    get: operations["getOpenidConfigurationLegacy"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/.well-known/jwks.json": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Deprecated root JWKS alias
+     * @deprecated
+     * @description Use `/api/oauth/.well-known/jwks.json` instead.
+     */
+    get: operations["getOauthJwksLegacy"];
     put?: never;
     post?: never;
     delete?: never;
@@ -960,71 +643,98 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** @description Common error envelope. `error` is always present on a non-2xx response; `error_description` and `details` are optional. */
     ErrorEnvelope: {
       error: string;
       error_description?: string;
-      details?: Record<string, never>[];
+      details?: unknown[];
     };
-    Address: {
-      country?: string;
-      line1?: string;
-      line2?: string | null;
-      city?: string;
-      state?: string | null;
-      postalCode?: string;
+    VerifyRpnResponse: {
+      /** @enum {string} */
+      result: "found_legal_entity" | "found_natural_person" | "not_found";
+      /** @description Whether the resident has an active residency. */
+      active: boolean;
     };
-    LegalEntitySummary: {
+    VerifyRpnRequest: {
+      /** @example 80000000000012 */
+      rpn: string;
+    };
+    SearchLegalEntitiesResponse: {
+      results: {
+        /** Format: uuid */
+        id: string;
+        name: string;
+        extension: string;
+        /** @description 14-digit Resident Permit Number. */
+        residentPermitNumber: string | null;
+      }[];
+    };
+    SearchLegalEntitiesRequest: {
+      query: string;
+    };
+    LegalEntity: {
       /** Format: uuid */
-      id?: string;
-      /** @example llc */
-      optionId?: string;
-      /** @example Limited Liability Company */
-      type?: string;
-      name?: string;
-      extension?: string;
-      nameStartsWithExtension?: boolean;
-      residentPermitNumber?: string | null;
-    };
-    LegalEntity: components["schemas"]["LegalEntitySummary"] & {
+      id: string;
+      optionId: string;
+      type: string;
+      name: string;
+      extension: string;
+      nameStartsWithExtension: boolean;
       /** Format: date-time */
       formationDate?: string | null;
       /** Format: date-time */
       registrationDate?: string | null;
       /** Format: date-time */
       dissolutionDate?: string | null;
+      /** @description 14-digit Resident Permit Number. */
+      residentPermitNumber: string | null;
+      principalOfficeAddress?: components["schemas"]["Address"];
       /** Format: date-time */
       createdAt?: string;
-      principalOfficeAddress?: components["schemas"]["Address"] | null;
     };
+    Address: {
+      line1: string;
+      line2?: string | null;
+      city: string;
+      state?: string | null;
+      postalCode: string;
+      country: string;
+    } | null;
     Document: {
       /** Format: uuid */
-      id?: string;
-      name?: string;
+      id: string;
+      name: string;
       slug?: string | null;
-      version?: string | number;
+      version?: string | null;
       /** Format: uri */
-      fileUrl?: string;
+      fileUrl: string | null;
       /** Format: date-time */
       createdAt?: string;
     };
     LegalEntityApplication: {
       /** Format: uuid */
-      id?: string;
+      id: string;
       /** @enum {string} */
-      statusId?: "Draft" | "Pending Review" | "Approved" | "Rejected";
-      /** @description Stored internal format. Not the same shape as the create body. */
-      applicationData?: Record<string, never>;
-      applicationVersion?: string;
+      statusId: "Draft" | "Pending Review" | "Approved" | "Rejected";
+      applicationData?: unknown;
+      applicationVersion: string;
       /** Format: date-time */
-      submittedAt?: string | null;
+      submittedAt: string | null;
       /** Format: date-time */
-      createdAt?: string;
+      createdAt: string;
       /** Format: date-time */
-      approvedAt?: string | null;
+      approvedAt: string | null;
       /** Format: date-time */
-      rejectedAt?: string | null;
+      rejectedAt: string | null;
       /** Format: uuid */
-      legalEntityId?: string | null;
+      legalEntityId: string | null;
+    };
+    CreateLegalEntityApplicationResponse: {
+      data: components["schemas"]["LegalEntityApplication"];
+      nextSteps: {
+        /** Format: uri */
+        signature: string | null;
+      };
     };
     CreateLegalEntityApplicationRequest: {
       applicationData: {
@@ -1050,124 +760,3540 @@ export interface components {
         /** Format: email */
         contactEmail: string;
         /** @enum {string|null} */
-        registeredAgentProvider?: "prospera_employment_solutions" | null;
-        registeredAgentDetails?: {
-          attn?: string;
-          residentPermitNumber?: string;
-          officeAddress?: components["schemas"]["Address"];
-          mailingAddress?: components["schemas"]["Address"];
+        registeredAgentProvider: "prospera_employment_solutions" | null;
+        registeredAgentDetails: {
+          attn: string;
+          /** @description 14-digit Resident Permit Number. */
+          residentPermitNumber: string;
+          officeAddress: components["schemas"]["Address"];
+          mailingAddress: components["schemas"]["Address"];
         } | null;
         analytics?: {
-          [key: string]: unknown;
+          [key: string]: string;
         };
       };
       referralCode?: string;
       /** Format: uri */
       redirectUrl?: string;
     };
-    NaturalPerson: {
-      givenName?: string;
-      surname?: string;
-      name?: string;
-      residentPermitNumber?: string | null;
-      countryOfBirth?: string | null;
-      citizenships?: string[];
-      dateOfBirth?: string | null;
-      /** @enum {string|null} */
-      sex?: "M" | "F" | null;
-      address?: components["schemas"]["Address"] | null;
-      phoneNumber?: string | null;
+    PaymentResponse: {
+      data?: {
+        [key: string]: unknown;
+      };
+      success?: boolean;
+      message?: string;
+    } & {
+      [key: string]: unknown;
     };
-    IdVerification: {
-      id?: string | null;
-      /** @enum {string|null} */
-      type?: "veriff" | null;
+    VoucherPaymentRequest: {
+      voucherCode: string;
+    };
+    CheckoutResponse: {
+      data: {
+        [key: string]: unknown;
+      } | null;
+      /** Format: uuid */
+      invoiceId: string;
+    };
+    CheckoutRequest: {
+      paymentProvider?: string;
+      paymentMethod?: {
+        [key: string]: unknown;
+      };
+      /** Format: email */
+      email?: string | null;
+      /** Format: uri */
+      redirectUrl: string;
+    };
+    PartnerResidencyApplication: {
+      /** Format: uuid */
+      id: string;
+      version: number;
+      statusId: string;
+      applicationVersion: string;
       /** Format: date-time */
-      date?: string | null;
+      submittedAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      approvedAt: string | null;
+      /** Format: date-time */
+      rejectedAt: string | null;
+      /** @description 14-digit Resident Permit Number. */
+      residentPermitNumber: string | null;
+      referralCode: string | null;
+      applicationData: {
+        /** @enum {string|null} */
+        residencyType: "limited_e_resident" | "e_resident" | "resident_annual" | null;
+        aoc: {
+          aocId: string | null;
+          signed: boolean;
+          signedByName: string | null;
+          /** Format: date-time */
+          signedAt: string | null;
+          agentAuthorized: boolean;
+        };
+        personalDetails: {
+          givenName: string;
+          surname: string;
+          /** Format: email */
+          email: string;
+          dateOfBirth: string;
+          sex: string;
+          countryOfBirth: string | null;
+          citizenships: string[];
+          alternateNamesAttestation: boolean;
+          alternateNames: string | null;
+          criminalBackgroundAttestation: boolean;
+          /** Format: uuid */
+          proofOfAddressUploadId: string | null;
+          address: {
+            line1: string | null;
+            line2: string | null;
+            city: string | null;
+            state: string | null;
+            postalCode: string | null;
+            country: string | null;
+          };
+          phoneNumber: string | null;
+        } | null;
+        information: {
+          residencyReason: string | null;
+          referralSource: string | null;
+        };
+      };
+      applicantPortalAccess: {
+        /** Format: email */
+        email: string | null;
+        hasLoggedIn: boolean;
+        /** Format: date-time */
+        lastLogin: string | null;
+        claimLinkSent: boolean;
+        /** Format: date-time */
+        claimLinkSentAt: string | null;
+      };
+      nextSteps: {
+        /** Format: uri */
+        agreementUrl: string | null;
+        proofOfAddressRequired: boolean;
+        paymentRequired: boolean;
+        verificationRequired: boolean;
+        verificationInstructions: string | null;
+        submitReady: boolean;
+      };
+    };
+    CreatePartnerResidencyApplicationRequest: {
+      applicationData: {
+        /** @enum {string} */
+        residencyType: "limited_e_resident" | "e_resident" | "resident_annual";
+        personalDetails: {
+          givenName: string;
+          surname: string;
+          /** Format: email */
+          email: string;
+          dateOfBirth: string;
+          /** @enum {string} */
+          sex: "male" | "female";
+          countryOfBirth: string;
+          citizenships: string[];
+          alternateNamesAttestation: boolean;
+          alternateNames?: string | null;
+          criminalBackgroundAttestation: boolean;
+          /** Format: uuid */
+          proofOfAddressUploadId?: string;
+          proofOfAddressSwornStatement?: {
+            /** @enum {boolean} */
+            agreed: true;
+            signature: string;
+            /** @enum {string} */
+            locale?: "en" | "es";
+          };
+          address: components["schemas"]["Address"] & {
+            country?: string;
+          };
+          phoneNumber: string;
+        };
+        information?: {
+          residencyReason?: string | null;
+          referralSource?: string | null;
+        };
+      };
+      referralCode?: string;
+      /** Format: uri */
+      redirectUrl?: string;
+    };
+    UpdatePartnerResidencyApplicationRequest: {
+      expectedVersion: number;
+      applicationData: {
+        /** @enum {string} */
+        residencyType: "limited_e_resident" | "e_resident" | "resident_annual";
+        personalDetails: {
+          givenName: string;
+          surname: string;
+          /** Format: email */
+          email: string;
+          dateOfBirth: string;
+          /** @enum {string} */
+          sex: "male" | "female";
+          countryOfBirth: string;
+          citizenships: string[];
+          alternateNamesAttestation: boolean;
+          alternateNames?: string | null;
+          criminalBackgroundAttestation: boolean;
+          /** Format: uuid */
+          proofOfAddressUploadId?: string;
+          proofOfAddressSwornStatement?: {
+            /** @enum {boolean} */
+            agreed: true;
+            signature: string;
+            /** @enum {string} */
+            locale?: "en" | "es";
+          };
+          address: components["schemas"]["Address"] & {
+            country?: string;
+          };
+          phoneNumber: string;
+        };
+        information?: {
+          residencyReason?: string | null;
+          referralSource?: string | null;
+        };
+      };
+      referralCode?: string;
+      /** Format: uri */
+      redirectUrl?: string;
+    };
+    PartnerCheckoutRequest: {
+      /** @enum {string} */
+      paymentProvider?:
+        | "stripe"
+        | "stripe-crypto"
+        | "blink"
+        | "blink-onchain"
+        | "lnbits"
+        | "solana-pay-ptc";
+      paymentMethod?: {
+        [key: string]: unknown;
+      };
+      /** Format: email */
+      email?: string | null;
+      /** Format: uri */
+      redirectUrl: string;
+    };
+    PartnerVoucherRequest: {
+      voucherCode: string;
+    };
+    NaturalPerson: {
+      givenName: string;
+      surname: string;
+      name: string;
+      /** @description 14-digit Resident Permit Number. */
+      residentPermitNumber: string | null;
+      countryOfBirth: string | null;
+      citizenships: string[];
+      /** Format: date-time */
+      dateOfBirth: string | null;
       /** @enum {string|null} */
-      status?: "approved" | null;
-      documents?: {
+      sex: "M" | "F" | null;
+      address: {
+        country: string;
+        line1: string;
+        line2: string | null;
+        city: string;
+        state: string | null;
+        postalCode: string;
+      } | null;
+      phoneNumber: string | null;
+    } | null;
+    IdVerification: {
+      /** Format: uuid */
+      id: string | null;
+      /** @enum {string|null} */
+      type: "veriff" | null;
+      /** @enum {string|null} */
+      documentType:
+        | "passport"
+        | "national_id"
+        | "drivers_license"
+        | "residence_permit"
+        | "visa"
+        | "other"
+        | null;
+      /** Format: date-time */
+      date: string | null;
+      /** @enum {string|null} */
+      status: "approved" | null;
+      documents: {
         /** Format: uri */
-        documentFront?: string | null;
+        documentFront: string | null;
         /** Format: uri */
-        documentBack?: string | null;
+        documentBack: string | null;
         /** Format: uri */
-        face?: string | null;
+        face: string | null;
       };
+    };
+    Residency: {
+      wasEverResident: boolean;
+      activeResidency: {
+        /** Format: date-time */
+        effectiveDate: string;
+        /** Format: date-time */
+        terminationDate: string | null;
+        /** @enum {string} */
+        residencyType: "Limited e-Resident" | "e-Resident" | "Resident";
+        version: string;
+      } | null;
+    };
+    ReferralListResponse: {
+      code: string;
+      naturalPersons: {
+        fullName: string | null;
+        /** Format: date-time */
+        referredAt: string;
+      }[];
+      legalEntities: {
+        name: string;
+        /** @description 14-digit Resident Permit Number. */
+        rpn: string;
+        /** Format: date-time */
+        referredAt: string | null;
+      }[];
+    };
+    CreateVisitorPassResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: {
+        /** @enum {boolean} */
+        ok: true;
+      };
+    };
+    CreateVisitorPassRequest: {
+      firstName: string;
+      lastName: string;
+      dateOfBirth: string;
+      /** Format: email */
+      email: string;
+      signature: string;
+      consentToBackgroundCheck: boolean;
+      referralSource: string;
+    };
+    OpenidConfiguration: {
+      /** Format: uri */
+      issuer: string;
+      /** Format: uri */
+      authorization_endpoint: string;
+      /** Format: uri */
+      token_endpoint: string;
+      /** Format: uri */
+      userinfo_endpoint: string;
+      /** Format: uri */
+      jwks_uri: string;
+      /** Format: uri */
+      registration_endpoint?: string;
+      /** Format: uri */
+      revocation_endpoint: string;
+      /** Format: uri */
+      introspection_endpoint: string;
+      scopes_supported: string[];
+      response_types_supported: string[];
+      grant_types_supported: string[];
+      subject_types_supported: string[];
+      id_token_signing_alg_values_supported: string[];
+      token_endpoint_auth_methods_supported: string[];
+      claims_supported: string[];
+      code_challenge_methods_supported: string[];
+      /** Format: uri */
+      service_documentation: string;
+    } & {
+      [key: string]: unknown;
+    };
+    JsonWebKeySet: {
+      keys: ({
+        kty: string;
+        use?: string;
+        kid: string;
+        alg?: string;
+        n?: string;
+        e?: string;
+      } & {
+        [key: string]: unknown;
+      })[];
+    };
+    OAuthTokenResponse: {
+      access_token: string;
+      /** @enum {string} */
+      token_type: "Bearer";
+      expires_in: number;
+      refresh_token?: string;
+      id_token?: string;
+      scope?: string;
+    };
+    OAuthTokenRequest: {
+      /** @enum {string} */
+      grant_type: "authorization_code" | "refresh_token";
+      code?: string;
+      /** Format: uri */
+      redirect_uri?: string;
+      code_verifier?: string;
+      refresh_token?: string;
+      client_id?: string;
+      client_secret?: string;
+    };
+    OAuthUserinfo: {
+      sub: string;
+      name?: string;
+      given_name?: string;
+      family_name?: string;
+      /** Format: uri */
+      picture?: string;
+      /** Format: email */
+      email?: string;
+      email_verified?: boolean;
+    } & {
+      [key: string]: unknown;
+    };
+    OAuthIntrospectionResponse: {
+      active: boolean;
+      scope?: string;
+      client_id?: string;
+      username?: string;
+      token_type?: string;
+      exp?: number;
+      iat?: number;
+      sub?: string;
+      aud?: string | string[];
+      iss?: string;
+    } & {
+      [key: string]: unknown;
+    };
+    LegacyCouponPaymentRequest: {
+      couponCode: string;
     };
   };
-  responses: {
-    /** @description Validation error or precondition failure. */
-    BadRequest: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Missing or invalid credential. */
-    Unauthorized: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Credential lacks the required scope. */
-    Forbidden: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Resource does not exist or is invisible to the caller. */
-    NotFound: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Conflicting state (e.g. legal-entity name already taken). */
-    Conflict: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Rate limit exceeded. */
-    RateLimited: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-    /** @description Server error. */
-    InternalError: {
-      headers: {
-        [name: string]: unknown;
-      };
-      content: {
-        "application/json": components["schemas"]["ErrorEnvelope"];
-      };
-    };
-  };
-  parameters: {
-    LegalEntityId: string;
-    ApplicationId: string;
-  };
+  responses: never;
+  parameters: never;
   requestBodies: never;
   headers: never;
   pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+  verifyRpn: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VerifyRpnRequest"];
+      };
+    };
+    responses: {
+      /** @description Lookup result. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VerifyRpnResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  searchLegalEntities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SearchLegalEntitiesRequest"];
+      };
+    };
+    responses: {
+      /** @description Matching legal entities. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchLegalEntitiesResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getLegalEntity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Legal-entity record. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LegalEntity"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getLegalEntityDocuments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents for the legal entity. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["Document"][];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listLegalEntityApplications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Applications visible to the caller. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LegalEntityApplication"][];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  createLegalEntityApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateLegalEntityApplicationRequest"];
+      };
+    };
+    responses: {
+      /** @description Created application and next steps. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreateLegalEntityApplicationResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getLegalEntityApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Application record. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LegalEntityApplication"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  payLegalEntityApplicationWithVoucher: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VoucherPaymentRequest"];
+      };
+    };
+    responses: {
+      /** @description Voucher applied. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  createLegalEntityApplicationCheckout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckoutRequest"];
+      };
+    };
+    responses: {
+      /** @description Checkout session. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckoutResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listPartnerResidencyApplications: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Applications owned by this Partner Integration. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["PartnerResidencyApplication"][];
+            pagination: {
+              limit: number;
+              /** Format: uuid */
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  createPartnerResidencyApplication: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePartnerResidencyApplicationRequest"];
+      };
+    };
+    responses: {
+      /** @description Application created. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["PartnerResidencyApplication"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getPartnerResidencyApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Application record. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["PartnerResidencyApplication"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  updatePartnerResidencyApplication: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePartnerResidencyApplicationRequest"];
+      };
+    };
+    responses: {
+      /** @description Updated application. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["PartnerResidencyApplication"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  uploadProofOfAddress: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: uuid */
+          applicationId: string;
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Upload metadata. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              applicationId: string;
+              contentType: string;
+              size: number;
+            };
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  downloadProofOfAddress: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Private proof-of-address file. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  createPartnerResidencyApplicationCheckout: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PartnerCheckoutRequest"];
+      };
+    };
+    responses: {
+      /** @description Checkout session. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckoutResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  payPartnerResidencyApplicationWithVoucher: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PartnerVoucherRequest"];
+      };
+    };
+    responses: {
+      /** @description Voucher applied. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  submitPartnerResidencyApplication: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Submitted application. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["PartnerResidencyApplication"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getNaturalPerson: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Natural-person details. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NaturalPerson"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getNaturalPersonIdVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description ID-verification details and signed artifact URLs. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IdVerification"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getNaturalPersonResidency: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Residency status. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Residency"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listConsentedLegalEntities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Consented entities. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LegalEntity"][];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getConsentedLegalEntity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Consented legal entity. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LegalEntity"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getConsentedLegalEntityDocuments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents for the entity. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["Document"][];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listReferralCodeReferrals: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        code: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paginated referrals. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReferralListResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  createVisitorPassApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateVisitorPassRequest"];
+      };
+    };
+    responses: {
+      /** @description Visitor Pass application accepted. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreateVisitorPassResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getOpenidConfiguration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OpenID Provider metadata. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenidConfiguration"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getOauthJwks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description JSON Web Key Set. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JsonWebKeySet"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthAuthorize: {
+    parameters: {
+      query: {
+        response_type: "code";
+        client_id: string;
+        redirect_uri: string;
+        scope: string;
+        state?: string;
+        code_challenge?: string;
+        code_challenge_method?: "S256";
+        nonce?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Redirect to login, consent, or the client redirect URI. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/x-www-form-urlencoded": components["schemas"]["OAuthTokenRequest"];
+      };
+    };
+    responses: {
+      /** @description OAuth tokens. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OAuthTokenResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthUserinfo: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Claims authorized by the access token. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OAuthUserinfo"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthRevoke: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/x-www-form-urlencoded": {
+          token: string;
+          token_type_hint?: string;
+          client_id?: string;
+          client_secret?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Token revoked, or already inactive. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthIntrospect: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/x-www-form-urlencoded": {
+          token: string;
+          token_type_hint?: string;
+          client_id?: string;
+          client_secret?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Token activity and metadata. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OAuthIntrospectionResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  payLegalEntityApplicationWithCoupon: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LegacyCouponPaymentRequest"];
+      };
+    };
+    responses: {
+      /** @description Coupon alias accepted. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  payPartnerResidencyApplicationWithCoupon: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Makes retried partner write requests safe. */
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LegacyCouponPaymentRequest"];
+      };
+    };
+    responses: {
+      /** @description Coupon alias accepted. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaymentResponse"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Partner API rate limit exceeded. */
+      429: {
+        headers: {
+          /** @description Seconds until the partner client should retry. */
+          "Retry-After": number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getNaturalPersonIdVerificationLegacy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description ID-verification details and signed artifact URLs. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["IdVerification"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getOpenidConfigurationLegacy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OpenID Provider metadata. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenidConfiguration"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getOauthJwksLegacy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description JSON Web Key Set. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JsonWebKeySet"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+}

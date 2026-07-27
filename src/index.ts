@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Command, CommanderError } from "commander";
+import { runApplicationCheckout } from "./commands/application/checkout.js";
 import { runApplicationCreate } from "./commands/application/create.js";
 import { runApplicationGet } from "./commands/application/get.js";
 import { runApplicationList } from "./commands/application/list.js";
@@ -21,8 +22,10 @@ import { runEntityVerify } from "./commands/entity/verify.js";
 import { runMeIdVerification } from "./commands/me/id-verification.js";
 import { runMeProfile } from "./commands/me/profile.js";
 import { runMeResidency } from "./commands/me/residency.js";
+import { runReferralList } from "./commands/referral/list.js";
 import type { GlobalOptions, RuntimeDependencies } from "./commands/runtime.js";
 import { runSchema } from "./commands/schema.js";
+import { runVisitorPassCreate } from "./commands/visitor-pass/create.js";
 import { ExitCodes, ExitError } from "./errors.js";
 import { printError } from "./output/format.js";
 import { VERSION } from "./version.js";
@@ -104,9 +107,20 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
   application
     .command("pay")
     .argument("<id>")
-    .requiredOption("--coupon <code>", "Coupon code to apply.")
+    .option("--voucher <code>", "Voucher code to apply.")
+    .option("--coupon <code>", "Deprecated alias for --voucher.")
     .action(function (this: Command, id: string) {
       return runApplicationSafe(() => runApplicationPay(id, this.opts(), globals(this), deps));
+    });
+  application
+    .command("checkout")
+    .argument("<id>")
+    .requiredOption("--redirect-url <url>", "Return URL after hosted checkout completes.")
+    .option("--provider <name>", "Payment provider identifier passed through to the API.")
+    .option("--payment-method <json>", "Payment method object as inline JSON.")
+    .option("--email <address>", "Email address for checkout receipts.")
+    .action(function (this: Command, id: string) {
+      return runApplicationSafe(() => runApplicationCheckout(id, this.opts(), globals(this), deps));
     });
   application
     .command("watch")
@@ -128,6 +142,35 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
   me.command("id-verification").action(function (this: Command) {
     return runApplicationSafe(() => runMeIdVerification(globals(this), deps));
   });
+
+  const referral = program
+    .command("referral")
+    .description("Inspect Catalyst referral-code attribution.");
+  referral
+    .command("list")
+    .argument("<code>")
+    .action(function (this: Command, code: string) {
+      return runApplicationSafe(() => runReferralList(code, globals(this), deps));
+    });
+
+  const visitorPass = program
+    .command("visitor-pass")
+    .description("Submit visitor pass applications.");
+  visitorPass
+    .command("create")
+    .requiredOption("--first-name <name>", "Applicant first name.")
+    .requiredOption("--last-name <name>", "Applicant last name.")
+    .requiredOption("--date-of-birth <date>", "Applicant date of birth as YYYY-MM-DD.")
+    .requiredOption("--email <address>", "Applicant email address.")
+    .requiredOption("--signature <text>", "Applicant full legal name as signature.")
+    .requiredOption(
+      "--consent-to-background-check",
+      "Confirm the applicant consents to a background check.",
+    )
+    .requiredOption("--referral-source <text>", "How the applicant heard about Prospera.")
+    .action(function (this: Command) {
+      return runApplicationSafe(() => runVisitorPassCreate(this.opts(), globals(this), deps));
+    });
 
   const auth = program
     .command("auth")

@@ -6,7 +6,8 @@ info:
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, authentication, configuration, completion, and schema workflows.
+    identity, referral, visitor pass, authentication, configuration,
+    completion, and schema workflows.
   contact:
     name: Prospera
     url: https://docs.eprospera.com
@@ -216,30 +217,79 @@ command:
             - name: credentialTypes
               value: [ ak, sk ]
         - name: pay
-          description: Apply a fully covering coupon to a legal-entity application.
+          description: Apply a fully covering voucher to a legal-entity application.
           interactive: true
           arguments:
             - name: id
               required: true
               description: Legal entity application UUID.
           options:
-            - name: --coupon
-              required: true
-              description: Coupon code to apply.
+            - name: --voucher
+              description: Voucher code to apply. Pass exactly one of --voucher or --coupon.
               arguments:
                 - name: code
                   required: true
-                  description: Coupon code.
+                  description: Voucher code.
+            - name: --coupon
+              description: Deprecated alias for --voucher.
+              arguments:
+                - name: code
+                  required: true
+                  description: Voucher code.
           examples:
             - eprospera --json --yes application pay
-              00000000-0000-4000-8000-000000000000 --coupon EXAMPLE_COUPON
+              00000000-0000-4000-8000-000000000000 --voucher EXAMPLE_VOUCHER
           metadata:
             - name: endpoint
-              value: POST /api/v1/legal_entity_applications/{id}/pay/coupon
+              value: POST /api/v1/legal_entity_applications/{id}/pay/voucher
             - name: requiredScope
               value: agent:entity.application.pay
             - name: credentialTypes
               value: [ ak, sk ]
+        - name: checkout
+          description: Create a hosted checkout session for a legal-entity application.
+            Standard API keys only; Agent Key checkout is disabled upstream.
+          interactive: true
+          arguments:
+            - name: id
+              required: true
+              description: Legal entity application UUID.
+          options:
+            - name: --redirect-url
+              required: true
+              description: Return URL after hosted checkout completes.
+              arguments:
+                - name: url
+                  required: true
+                  description: Absolute URL.
+            - name: --provider
+              description: Payment provider identifier passed through to the API.
+                Provide exactly one of --provider or --payment-method.
+              arguments:
+                - name: name
+                  required: true
+                  description: Provider identifier, such as stripe or blink.
+            - name: --payment-method
+              description: Payment method object as inline JSON.
+              arguments:
+                - name: json
+                  required: true
+                  description: JSON object.
+            - name: --email
+              description: Email address for checkout receipts.
+              arguments:
+                - name: address
+                  required: true
+                  description: Email address.
+          examples:
+            - eprospera --json --yes application checkout
+              00000000-0000-4000-8000-000000000000 --redirect-url
+              https://example.com/return --provider stripe
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/legal_entity_applications/{id}/checkout_session
+            - name: credentialTypes
+              value: [ sk ]
         - name: watch
           description: Poll an application until approval, rejection, payment failure, or
             timeout.
@@ -319,6 +369,83 @@ command:
               value: eprospera:person.id_verification.read
             - name: credentialTypes
               value: [ ak, oauth ]
+    - name: referral
+      description: Inspect Catalyst referral-code attribution.
+      commands:
+        - name: list
+          description: List natural persons and legal entities attributed to a referral
+            code.
+          arguments:
+            - name: code
+              required: true
+              description: Referral code.
+          examples:
+            - eprospera --json referral list EXAMPLE_CODE
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/referral-codes/{code}/referrals
+            - name: credentialTypes
+              value: [ sk ]
+    - name: visitor-pass
+      description: Submit visitor pass applications.
+      commands:
+        - name: create
+          description: Submit a public visitor pass application. No credential required.
+          interactive: true
+          options:
+            - name: --first-name
+              required: true
+              description: Applicant first name.
+              arguments:
+                - name: name
+                  required: true
+                  description: First name.
+            - name: --last-name
+              required: true
+              description: Applicant last name.
+              arguments:
+                - name: name
+                  required: true
+                  description: Last name.
+            - name: --date-of-birth
+              required: true
+              description: Applicant date of birth as YYYY-MM-DD.
+              arguments:
+                - name: date
+                  required: true
+                  description: ISO date.
+            - name: --email
+              required: true
+              description: Applicant email address.
+              arguments:
+                - name: address
+                  required: true
+                  description: Email address.
+            - name: --signature
+              required: true
+              description: Applicant full legal name as signature.
+              arguments:
+                - name: text
+                  required: true
+                  description: Signature text.
+            - name: --consent-to-background-check
+              required: true
+              description: Confirm the applicant consents to a background check.
+            - name: --referral-source
+              required: true
+              description: How the applicant heard about Prospera.
+              arguments:
+                - name: text
+                  required: true
+                  description: Referral source.
+          examples:
+            - eprospera --json --yes visitor-pass create --first-name Ada
+              --last-name Lovelace --date-of-birth 1990-01-01 --email
+              ada@example.test --signature "Ada Lovelace"
+              --consent-to-background-check --referral-source "Prospera website"
+          metadata:
+            - name: endpoint
+              value: POST /api/v1/visitor_pass_applications
     - name: auth
       description: Log in, inspect, and remove local credentials.
       commands:

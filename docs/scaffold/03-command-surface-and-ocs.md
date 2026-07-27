@@ -37,12 +37,17 @@ eprospera entity documents <id>
 eprospera application list
 eprospera application create [--file <path>]
 eprospera application get <id>
-eprospera application pay <id> --coupon <code>
+eprospera application pay <id> --voucher <code>
+eprospera application checkout <id> --redirect-url <url>
 eprospera application watch <id>
 
 eprospera me profile
 eprospera me residency
 eprospera me id-verification
+
+eprospera referral list <code>
+
+eprospera visitor-pass create
 
 eprospera auth login
 eprospera auth whoami

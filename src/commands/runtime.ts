@@ -56,6 +56,12 @@ export type AuthenticatedContext = {
   globals: GlobalOptions;
 };
 
+export type UnauthenticatedContext = {
+  api: EProsperaApiClient;
+  output: PrintOptions;
+  globals: GlobalOptions;
+};
+
 export const uuidSchema = z.string().uuid();
 export const nonEmptyStringSchema = z.string().trim().min(1);
 export const rpnSchema = z
@@ -90,6 +96,38 @@ export async function authenticatedContext(
     output: outputOptions(globals, deps),
     globals,
   };
+}
+
+export async function unauthenticatedContext(
+  globals: GlobalOptions,
+  deps: RuntimeDependencies = {},
+): Promise<UnauthenticatedContext> {
+  const env = deps.env ?? process.env;
+  const config = await loadConfig(configStoreOptions(deps));
+
+  return {
+    api: createApiClient({
+      baseUrl: resolveRuntimeBaseUrl(env, config),
+      env,
+      fetch: deps.fetch,
+      retry: deps.retry,
+      idempotencyKey: deps.idempotencyKey,
+    }),
+    output: outputOptions(globals, deps),
+    globals,
+  };
+}
+
+export function warnDeprecated(
+  message: string,
+  globals: GlobalOptions,
+  deps: RuntimeDependencies = {},
+): void {
+  if (globals.quiet) {
+    return;
+  }
+  const stderr = deps.streams?.stderr ?? process.stderr;
+  stderr.write(`Warning: ${message}\n`);
 }
 
 export function outputOptions(
