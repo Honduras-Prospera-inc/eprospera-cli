@@ -2,12 +2,12 @@ $schema: https://opencli.org/draft.json
 opencli: "0.1"
 info:
   title: eprospera
-  version: "0.1.2"
+  version: "0.2.0"
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, referral, visitor pass, authentication, configuration,
-    completion, and schema workflows.
+    identity, referral, visitor pass, authentication, configuration, completion,
+    and schema workflows.
   contact:
     name: Prospera
     url: https://docs.eprospera.com
@@ -263,8 +263,8 @@ command:
                   required: true
                   description: Absolute URL.
             - name: --provider
-              description: Payment provider identifier passed through to the API.
-                Provide exactly one of --provider or --payment-method.
+              description: Payment provider identifier passed through to the API. Provide
+                exactly one of --provider or --payment-method.
               arguments:
                 - name: name
                   required: true
