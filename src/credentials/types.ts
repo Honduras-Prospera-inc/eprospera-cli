@@ -5,6 +5,7 @@ export type CredentialKind = (typeof CredentialKinds)[number];
 export type StoredCredential = {
   kind: CredentialKind;
   token: string;
+  clientId?: string;
   refreshToken?: string;
   scopes: string[];
   expiresAt?: number;

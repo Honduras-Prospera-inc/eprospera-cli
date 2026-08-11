@@ -1,6 +1,4 @@
-import { createApiClient } from "../../api/client.js";
-import { loadConfig } from "../../config/store.js";
-import { resolveCredential } from "../../credentials/resolve.js";
+import type { EProsperaApiClient } from "../../api/client.js";
 import type {
   CredentialKind,
   CredentialSource,
@@ -8,13 +6,7 @@ import type {
 } from "../../credentials/types.js";
 import { ExitError } from "../../errors.js";
 import { print } from "../../output/format.js";
-import {
-  configStoreOptions,
-  type GlobalOptions,
-  outputOptions,
-  type RuntimeDependencies,
-  resolveRuntimeBaseUrl,
-} from "../runtime.js";
+import { authenticatedContext, type GlobalOptions, type RuntimeDependencies } from "../runtime.js";
 
 export type WhoamiOptions = {
   verify?: boolean;
@@ -25,19 +17,14 @@ export async function runAuthWhoami(
   globals: GlobalOptions,
   deps: RuntimeDependencies = {},
 ): Promise<void> {
-  const env = deps.env ?? process.env;
-  const credential = await resolveCredential({
-    apiKey: globals.apiKey,
-    env,
-    store: configStoreOptions(deps),
-    loadStoredCredential: deps.loadStoredCredential,
-  });
+  const context = await authenticatedContext("auth.whoami", globals, deps);
+  const credential = context.credential;
   const output = {
     ...credentialSummary(credential),
-    ...(options.verify ? { verification: await verifyCredential(credential, env, deps) } : {}),
+    ...(options.verify ? { verification: await verifyCredential(credential, context.api) } : {}),
   };
 
-  print(output, outputOptions(globals, deps));
+  print(output, context.output);
 }
 
 function credentialSummary(credential: ResolvedCredential): {
@@ -82,8 +69,7 @@ function cachedScopesSummary(credential: ResolvedCredential): {
 
 async function verifyCredential(
   credential: ResolvedCredential,
-  env: NodeJS.ProcessEnv,
-  deps: RuntimeDependencies,
+  api: EProsperaApiClient,
 ): Promise<
   | {
       status: "verified";
@@ -102,16 +88,6 @@ async function verifyCredential(
       reason: "Standard API keys do not expose an owner identity endpoint.",
     };
   }
-
-  const config = await loadConfig(configStoreOptions(deps));
-  const api = createApiClient({
-    baseUrl: resolveRuntimeBaseUrl(env, config),
-    env,
-    token: credential.token,
-    fetch: deps.fetch,
-    retry: deps.retry,
-    idempotencyKey: deps.idempotencyKey,
-  });
 
   if (credential.kind === "oauth") {
     const response = await api.raw.GET("/api/oauth/userinfo");

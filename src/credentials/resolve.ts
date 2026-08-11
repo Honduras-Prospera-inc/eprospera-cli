@@ -10,6 +10,7 @@ export type ResolveCredentialOptions = {
   apiKey?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  allowExpiredOAuth?: boolean;
   store?: CredentialStoreOptions;
   loadStoredCredential?: () => Promise<LoadableCredential | undefined>;
 };
@@ -38,7 +39,10 @@ export async function resolveCredential(
     });
   }
 
-  if (isExpired(stored, options.now ?? Date.now)) {
+  if (
+    isExpired(stored, options.now ?? Date.now) &&
+    !(options.allowExpiredOAuth && stored.kind === "oauth" && stored.refreshToken)
+  ) {
     throw new ExitError({
       code: "EXPIRED_CREDENTIAL",
       message: "Stored credential has expired. Run eprospera auth login again.",

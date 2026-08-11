@@ -7,7 +7,7 @@
 
 TypeScript command-line interface for the e-Prospera public API.
 
-`eprospera` is designed for scriptable legal-entity, application, identity, auth,
+`eprospera` is designed for scriptable legal-entity, application, identity, tax, auth,
 configuration, completion, and schema workflows. The CLI is JSON-friendly by
 default so it can be used cleanly from shells, CI jobs, and agentic tools.
 
@@ -46,7 +46,8 @@ The command surface is defined in `cli.ocs.yaml`.
 | --- | --- |
 | Legal entities | `entity verify`, `entity search`, `entity get`, `entity documents` |
 | Applications | `application list`, `application create`, `application get`, `application pay`, `application checkout`, `application watch` |
-| Current user | `me profile`, `me residency`, `me id-verification` |
+| Current user | `me profile`, `me residency`, `me id-verification`, `me legal-entities list/get/documents` |
+| Taxes | `tax status`, `tax list`, `tax get`, `tax download` |
 | Referrals | `referral list` |
 | Visitor passes | `visitor-pass create` |
 | Auth | `auth login`, `auth whoami`, `auth logout` |
@@ -79,6 +80,16 @@ supports one:
 
 ```sh
 eprospera --json auth whoami --verify
+```
+
+For an interactive user session, use OAuth device authorization. The CLI opens
+the e-Próspera consent page, stores tokens in the OS keychain when available,
+rotates refresh tokens automatically, and revokes the remote session on logout:
+
+```sh
+eprospera auth login --oauth
+eprospera --json tax status
+eprospera --yes auth logout
 ```
 
 Do not commit API keys, request payloads, `.env` files, or exported credentials.

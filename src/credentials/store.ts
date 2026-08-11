@@ -190,6 +190,7 @@ function normalizeStoredCredential(value: unknown): StoredCredential {
   return {
     kind: value.kind,
     token: value.token.trim(),
+    clientId: optionalString(value.clientId),
     refreshToken: optionalString(value.refreshToken),
     scopes: stringArray(value.scopes),
     expiresAt: optionalFiniteNumber(value.expiresAt),

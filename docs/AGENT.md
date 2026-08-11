@@ -3,7 +3,7 @@
 ## TL;DR
 
 `eprospera` is a JSON-first CLI for the e-Prospera public API. Use it to verify
-entities, inspect applications, read current-user data, create or monitor
+entities, inspect applications, read current-user and tax data, create or monitor
 legal-entity applications, pay with vouchers or hosted checkout, inspect
 referral-code attribution, and submit visitor pass applications. This guide
 reflects `@prospera/eprospera-cli@0.2.0` and later.
@@ -41,9 +41,16 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | `me profile` | `ak`, `oauth` | `agent:person.details.read` | `0,3,4,7,9` | Standard API keys are not valid for `me` commands. |
 | `me residency` | `ak`, `oauth` | `agent:person.residency.read` | `0,3,4,7,9` | Missing residency-read scope. |
 | `me id-verification` | `ak`, `oauth` | `agent:person.id_verification.read` | `0,3,4,7,9` | Missing ID-verification scope. |
+| `me legal-entities list` | `oauth` | `eprospera:entity.read` | `0,3,4,7,9` | Entity was not selected during consent. |
+| `me legal-entities get <id>` | `oauth` | `eprospera:entity.read` | `0,2,3,4,5,7,9` | Entity is no longer represented or consented. |
+| `me legal-entities documents <id>` | `oauth` | `eprospera:entity.documents.read` | `0,2,3,4,5,7,9` | Missing document consent. |
+| `tax status` | `oauth` | personal or entity tax read | `0,2,3,4,7,9` | Subject is outside the granted scope. |
+| `tax list` | `oauth` | personal or entity tax read | `0,2,3,4,7,9` | Invalid year, type, limit, or cursor. |
+| `tax get <filing-id>` | `oauth` | personal or entity tax read | `0,2,3,4,5,7,9` | Filing is not submitted or authorized. |
+| `tax download <filing-id>` | `oauth` | personal or entity tax read | `0,2,3,4,5,6,7,9` | Destination exists without `--yes`. |
 | `referral list <code>` | `sk` | none | `0,2,3,4,5,7,9` | Agent Keys are not valid for referral commands. |
 | `visitor-pass create` | none | none | `0,2,7,8,9` | Missing `--consent-to-background-check`. |
-| `auth login` | `ak`, `sk` | none | `0,2,3` | Choose exactly one of `--agent-key` or `--standard-key`. |
+| `auth login` | `ak`, `sk`, `oauth` | none | `0,2,3,9` | Choose exactly one login mode. |
 | `auth whoami` | `ak`, `sk`, `oauth` | none | `0,3` | No credential is configured. |
 | `auth logout` | `ak`, `sk`, `oauth` | none | `0` | None. |
 | `config get <key>` | none | none | `0,2,5` | Only `api.baseUrl` is supported. |
@@ -62,8 +69,11 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | --- | --- | --- |
 | An Agent Key | Save it for later commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --agent-key --scopes <csv>` |
 | A standard API key | Save it for registry/application commands | `eprospera --api-key "$EPROSPERA_API_KEY" auth login --standard-key` |
+| An e-Próspera account | Authorize user, entity, and tax reads | `eprospera auth login --oauth` |
 | A one-off token | Avoid local credential storage | `eprospera --api-key "$EPROSPERA_API_KEY" --json <command>` |
 | A credential | Confirm local resolution and optional API identity | `eprospera --json auth whoami --verify` |
+| An OAuth session | Inspect current tax obligations | `eprospera --json tax status` |
+| A tax filing UUID | Download its assessment | `eprospera --json tax download <id> --document assessment` |
 | An RPN | Check whether an entity exists | `eprospera --json entity verify <rpn>` |
 | A legal entity UUID | Fetch entity details | `eprospera --json entity get <id>` |
 | A request JSON file | Create an application | `eprospera --json --yes application create --file application.json` |
@@ -79,7 +89,8 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - Use `--raw` when token efficiency matters.
 - Use `--fields id,statusId,name` to reduce large read responses.
 - Put credentials in `--api-key`, `EPROSPERA_API_KEY`, or `auth login`; never echo tokens.
-- Treat `auth login` as interactive unless `--api-key` is supplied.
+- Treat `auth login` as interactive. OAuth login opens a browser unless `--no-browser` is passed.
+- OAuth access tokens refresh automatically; tokens are never printed in command output.
 - One-off Agent Keys from `--api-key` or `EPROSPERA_API_KEY` defer scope checks to the API
   when no cached scopes are available.
 - Add `--skip-scope-check` only to bypass cached local scope metadata intentionally.

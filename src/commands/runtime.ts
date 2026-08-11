@@ -8,7 +8,9 @@ import {
   resolveBaseUrl,
 } from "../api/client.js";
 import { type CliConfig, type ConfigStoreOptions, loadConfig } from "../config/store.js";
+import { refreshOAuthCredential, shouldRefreshOAuthCredential } from "../credentials/oauth.js";
 import { type ResolveCredentialOptions, resolveCredential } from "../credentials/resolve.js";
+import { saveCredential } from "../credentials/store.js";
 import type {
   CredentialSource,
   ResolvedCredential,
@@ -47,6 +49,7 @@ export type RuntimeDependencies = {
   promptPassword?: (message: string) => Promise<string>;
   promptInput?: (message: string) => Promise<string>;
   promptConfirm?: (message: string) => Promise<boolean>;
+  openUrl?: (url: string) => Promise<boolean | undefined>;
 };
 
 export type AuthenticatedContext = {
@@ -75,17 +78,38 @@ export async function authenticatedContext(
 ): Promise<AuthenticatedContext> {
   const env = deps.env ?? process.env;
   const config = await loadConfig(configStoreOptions(deps));
-  const credential = await resolveCredential({
+  let credential = await resolveCredential({
     apiKey: globals.apiKey,
     env,
+    now: deps.now,
+    allowExpiredOAuth: true,
     store: configStoreOptions(deps),
     loadStoredCredential: deps.loadStoredCredential,
   });
+  const baseUrl = resolveRuntimeBaseUrl(env, config);
+  if (shouldRefreshOAuthCredential(credential, deps.now ?? Date.now)) {
+    credential = await refreshOAuthCredential(
+      createApiClient({
+        baseUrl,
+        env,
+        fetch: deps.fetch,
+        retry: deps.retry,
+        idempotencyKey: deps.idempotencyKey,
+      }),
+      credential,
+      { now: deps.now },
+    );
+    const { source: _source, ...storedCredential } = credential;
+    const source =
+      (await deps.saveStoredCredential?.(storedCredential)) ??
+      (await saveCredential(storedCredential, configStoreOptions(deps)));
+    credential = { ...credential, source };
+  }
   assertCommandScope(commandId, credential, { skipScopeCheck: globals.skipScopeCheck });
 
   return {
     api: createApiClient({
-      baseUrl: resolveRuntimeBaseUrl(env, config),
+      baseUrl,
       env,
       token: credential.token,
       fetch: deps.fetch,

@@ -55,9 +55,12 @@ export function checkCommandScope(
     return { ok: true };
   }
 
-  const requiredScope = requiredScopeForCredential(credential.kind, requirement);
-  if (requiredScope && !credential.scopes.includes(requiredScope)) {
-    return { ok: false, missing: requiredScope };
+  const requiredScopes = requiredScopesForCredential(credential.kind, requirement);
+  if (
+    requiredScopes.length > 0 &&
+    !requiredScopes.some((scope) => credential.scopes.includes(scope))
+  ) {
+    return { ok: false, missing: requiredScopes.join(" or ") };
   }
 
   return { ok: true };
@@ -94,25 +97,33 @@ export function assertCommandScope(
 function requiresCredential(requirement: {
   requiredScope?: string;
   oauthScope?: string;
+  oauthScopes?: readonly string[];
   credentialTypes?: readonly CredentialKind[];
 }): boolean {
   return Boolean(
-    requirement.requiredScope || requirement.oauthScope || requirement.credentialTypes?.length,
+    requirement.requiredScope ||
+      requirement.oauthScope ||
+      requirement.oauthScopes?.length ||
+      requirement.credentialTypes?.length,
   );
 }
 
-function requiredScopeForCredential(
+function requiredScopesForCredential(
   kind: CredentialKind,
   requirement: {
     requiredScope?: string;
     oauthScope?: string;
+    oauthScopes?: readonly string[];
   },
-): string | undefined {
+): readonly string[] {
   if (kind === "ak") {
-    return requirement.requiredScope;
+    return requirement.requiredScope ? [requirement.requiredScope] : [];
   }
   if (kind === "oauth") {
-    return requirement.oauthScope;
+    if (requirement.oauthScopes) {
+      return requirement.oauthScopes;
+    }
+    return requirement.oauthScope ? [requirement.oauthScope] : [];
   }
-  return undefined;
+  return [];
 }

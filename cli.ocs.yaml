@@ -6,8 +6,8 @@ info:
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, referral, visitor pass, authentication, configuration, completion,
-    and schema workflows.
+    identity, legal-entity consent, tax, referral, visitor pass, authentication, configuration,
+    completion, and schema workflows.
   contact:
     name: Prospera
     url: https://docs.eprospera.com
@@ -327,7 +327,7 @@ command:
             - name: credentialTypes
               value: [ ak, sk ]
     - name: me
-      description: Read profile data for the Agent Key owner or OAuth user.
+      description: Read profile data and OAuth-consented legal entities.
       commands:
         - name: profile
           description: Fetch the natural-person profile for the credential owner.
@@ -369,6 +369,163 @@ command:
               value: eprospera:person.id_verification.read
             - name: credentialTypes
               value: [ ak, oauth ]
+        - name: legal-entities
+          description: Read legal entities consented during OAuth login.
+          commands:
+            - name: list
+              description: List consented legal entities the OAuth user still represents.
+              examples:
+                - eprospera --json me legal-entities list
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/me/legal-entities
+                - name: oauthScope
+                  value: eprospera:entity.read
+                - name: credentialTypes
+                  value: [ oauth ]
+            - name: get
+              description: Fetch one consented legal entity by UUID.
+              arguments:
+                - name: id
+                  required: true
+                  description: Consented legal entity UUID.
+              examples:
+                - eprospera --json me legal-entities get 00000000-0000-4000-8000-000000000000
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/me/legal-entities/{id}
+                - name: oauthScope
+                  value: eprospera:entity.read
+                - name: credentialTypes
+                  value: [ oauth ]
+            - name: documents
+              description: List documents for one consented legal entity.
+              arguments:
+                - name: id
+                  required: true
+                  description: Consented legal entity UUID.
+              examples:
+                - eprospera --json me legal-entities documents 00000000-0000-4000-8000-000000000000
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/me/legal-entities/{id}/documents
+                - name: oauthScope
+                  value: eprospera:entity.documents.read
+                - name: credentialTypes
+                  value: [ oauth ]
+    - name: tax
+      description: Inspect tax obligations, submitted filings, and filed documents.
+      commands:
+        - name: status
+          description: Show open and overdue obligations plus lump-sum election status.
+          options:
+            - name: --subject
+              description: Restrict results to personal or a consented legal entity UUID.
+              arguments:
+                - name: subject
+                  required: true
+                  description: The word personal or a legal entity UUID.
+          examples:
+            - eprospera --json tax status --subject personal
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/tax/summary
+            - name: oauthScopes
+              value: [ eprospera:person.tax.read, eprospera:entity.tax.read ]
+            - name: credentialTypes
+              value: [ oauth ]
+        - name: list
+          description: List submitted tax filings with cursor pagination.
+          options:
+            - name: --subject
+              description: Restrict results to personal or a consented legal entity UUID.
+              arguments:
+                - name: subject
+                  required: true
+                  description: The word personal or a legal entity UUID.
+            - name: --type
+              description: Filter by tax type.
+              arguments:
+                - name: type
+                  required: true
+                  description: income or vat.
+            - name: --year
+              description: Filter by tax year.
+              arguments:
+                - name: year
+                  required: true
+                  description: Four-digit tax year.
+            - name: --limit
+              description: Number of filings to return, from 1 to 100.
+              arguments:
+                - name: count
+                  required: true
+                  description: Page size.
+            - name: --cursor
+              description: Continue from a prior response's next cursor.
+              arguments:
+                - name: cursor
+                  required: true
+                  description: Opaque pagination cursor.
+          examples:
+            - eprospera --json tax list --subject personal --type income --year 2025
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/tax/filings
+            - name: oauthScopes
+              value: [ eprospera:person.tax.read, eprospera:entity.tax.read ]
+            - name: credentialTypes
+              value: [ oauth ]
+        - name: get
+          description: Fetch one submitted tax filing.
+          arguments:
+            - name: filing-id
+              required: true
+              description: Tax filing UUID.
+          examples:
+            - eprospera --json tax get 00000000-0000-4000-8000-000000000000
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/tax/filings/{filingId}
+            - name: oauthScopes
+              value: [ eprospera:person.tax.read, eprospera:entity.tax.read ]
+            - name: credentialTypes
+              value: [ oauth ]
+        - name: download
+          description: Download a tax assessment or filed income return as PDF.
+          arguments:
+            - name: filing-id
+              required: true
+              description: Tax filing UUID.
+          options:
+            - name: --document
+              required: true
+              description: Document to download.
+              arguments:
+                - name: kind
+                  required: true
+                  description: assessment or return.
+            - name: --history-years
+              description: Include 1 to 5 years in an assessment.
+              arguments:
+                - name: years
+                  required: true
+                  description: Assessment history length.
+            - name: --output
+              description: Write the PDF to this path.
+              arguments:
+                - name: path
+                  required: true
+                  description: Destination file path.
+          examples:
+            - eprospera --json tax download 00000000-0000-4000-8000-000000000000 --document assessment
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/tax/filings/{filingId}/documents/{document}
+            - name: oauthScopes
+              value: [ eprospera:person.tax.read, eprospera:entity.tax.read ]
+            - name: credentialTypes
+              value: [ oauth ]
     - name: referral
       description: Inspect Catalyst referral-code attribution.
       commands:
@@ -450,24 +607,29 @@ command:
       description: Log in, inspect, and remove local credentials.
       commands:
         - name: login
-          description: Store an Agent Key or standard API key.
+          description: Authorize with OAuth or store an Agent Key or standard API key.
           interactive: true
           options:
             - name: --agent-key
               description: Prompt for an ak- Agent Key and validate it.
             - name: --standard-key
               description: Prompt for an sk- standard API key.
+            - name: --oauth
+              description: Authorize this CLI in a browser using OAuth device authorization.
+            - name: --no-browser
+              description: Do not open the authorization page automatically.
             - name: --scopes
-              description: Comma-separated Agent Key scopes to cache.
+              description: Comma-separated Agent Key or OAuth scopes.
               arguments:
                 - name: csv
                   required: true
                   description: Comma-separated scope names.
           examples:
             - eprospera auth login --agent-key --scopes agent:person.details.read
+            - eprospera auth login --oauth
           metadata:
             - name: credentialTypes
-              value: [ ak, sk ]
+              value: [ ak, sk, oauth ]
         - name: whoami
           description: Show the currently resolved credential kind and optional API
             identity metadata.
@@ -481,7 +643,7 @@ command:
             - name: credentialTypes
               value: [ ak, sk, oauth ]
         - name: logout
-          description: Delete locally stored credentials.
+          description: Revoke a stored OAuth session, then delete local credentials.
           interactive: true
           examples:
             - eprospera --yes auth logout
