@@ -95,6 +95,34 @@ eprospera --yes auth logout
 Do not commit API keys, request payloads, `.env` files, or exported credentials.
 The repository ignore rules are configured to keep those out of the public repo.
 
+## OAuth Access Boundaries
+
+OAuth login does not provide access to e-Próspera administration features or
+other users' records. It authorizes only the permissions shown on the browser
+consent page. Legal-entity commands are limited to entities selected during
+consent, and entity tax access also requires the user to remain an active
+representative.
+
+The tax commands are read-only. They can inspect obligations and submitted
+filings or download an assessment or return, but cannot create, edit, submit, or
+pay a filing.
+
+## Sensitive Output
+
+Tax responses, assessments, returns, and some legal-entity documents contain
+confidential information. Treat terminal output, redirected JSON, and downloaded
+files accordingly:
+
+- do not place them in source control, shared logs, or build artifacts;
+- remember that CI systems and shell-history tooling may retain command output;
+- downloaded tax PDFs use owner-only file permissions on supported platforms;
+- existing files are not overwritten unless `--yes` is supplied; and
+- run `eprospera --yes auth logout` when finished to revoke the OAuth session.
+
+Credentials use the operating-system keychain when available. The protected
+local-file fallback is intended for a single-user workstation, not a shared
+machine.
+
 ## Development
 
 Useful scripts:

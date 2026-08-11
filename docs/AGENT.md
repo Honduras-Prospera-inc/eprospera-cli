@@ -91,6 +91,10 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - Put credentials in `--api-key`, `EPROSPERA_API_KEY`, or `auth login`; never echo tokens.
 - Treat `auth login` as interactive. OAuth login opens a browser unless `--no-browser` is passed.
 - OAuth access tokens refresh automatically; tokens are never printed in command output.
+- OAuth never grants administration access. Entity data is limited to explicit
+  consent and current representation checks.
+- Treat tax output and entity documents as sensitive. Do not persist them in
+  shared logs, prompts, source control, or build artifacts.
 - One-off Agent Keys from `--api-key` or `EPROSPERA_API_KEY` defer scope checks to the API
   when no cached scopes are available.
 - Add `--skip-scope-check` only to bypass cached local scope metadata intentionally.
