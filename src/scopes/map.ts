@@ -3,6 +3,7 @@ import type { CredentialKind } from "../credentials/types.js";
 export type CommandScopeRequirement = {
   requiredScope?: string;
   oauthScope?: string;
+  oauthScopes?: readonly string[];
   credentialTypes?: readonly CredentialKind[];
 };
 
@@ -61,12 +62,40 @@ const commandScopes = {
     oauthScope: "eprospera:person.id_verification.read",
     credentialTypes: ["ak", "oauth"],
   },
+  "me.legal-entities.list": {
+    oauthScope: "eprospera:entity.read",
+    credentialTypes: ["oauth"],
+  },
+  "me.legal-entities.get": {
+    oauthScope: "eprospera:entity.read",
+    credentialTypes: ["oauth"],
+  },
+  "me.legal-entities.documents": {
+    oauthScope: "eprospera:entity.documents.read",
+    credentialTypes: ["oauth"],
+  },
+  "tax.status": {
+    oauthScopes: ["eprospera:person.tax.read", "eprospera:entity.tax.read"],
+    credentialTypes: ["oauth"],
+  },
+  "tax.list": {
+    oauthScopes: ["eprospera:person.tax.read", "eprospera:entity.tax.read"],
+    credentialTypes: ["oauth"],
+  },
+  "tax.get": {
+    oauthScopes: ["eprospera:person.tax.read", "eprospera:entity.tax.read"],
+    credentialTypes: ["oauth"],
+  },
+  "tax.download": {
+    oauthScopes: ["eprospera:person.tax.read", "eprospera:entity.tax.read"],
+    credentialTypes: ["oauth"],
+  },
   "referral.list": {
     credentialTypes: ["sk"],
   },
   "visitor-pass.create": {},
   "auth.login": {
-    credentialTypes: ["ak", "sk"],
+    credentialTypes: ["ak", "sk", "oauth"],
   },
   "auth.whoami": {
     credentialTypes: ["ak", "sk", "oauth"],

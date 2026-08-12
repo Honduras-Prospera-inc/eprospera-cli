@@ -20,11 +20,20 @@ import { runEntityGet } from "./commands/entity/get.js";
 import { runEntitySearch } from "./commands/entity/search.js";
 import { runEntityVerify } from "./commands/entity/verify.js";
 import { runMeIdVerification } from "./commands/me/id-verification.js";
+import {
+  runMeLegalEntitiesDocuments,
+  runMeLegalEntitiesGet,
+  runMeLegalEntitiesList,
+} from "./commands/me/legal-entities.js";
 import { runMeProfile } from "./commands/me/profile.js";
 import { runMeResidency } from "./commands/me/residency.js";
 import { runReferralList } from "./commands/referral/list.js";
 import type { GlobalOptions, RuntimeDependencies } from "./commands/runtime.js";
 import { runSchema } from "./commands/schema.js";
+import { runTaxDownload } from "./commands/tax/download.js";
+import { runTaxGet } from "./commands/tax/get.js";
+import { runTaxList } from "./commands/tax/list.js";
+import { runTaxStatus } from "./commands/tax/status.js";
 import { runVisitorPassCreate } from "./commands/visitor-pass/create.js";
 import { ExitCodes, ExitError } from "./errors.js";
 import { printError } from "./output/format.js";
@@ -132,7 +141,9 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
       return runApplicationSafe(() => runApplicationWatch(id, this.opts(), globals(this), deps));
     });
 
-  const me = program.command("me").description("Read profile data for the credential owner.");
+  const me = program
+    .command("me")
+    .description("Read profile data and OAuth-consented legal entities.");
   me.command("profile").action(function (this: Command) {
     return runApplicationSafe(() => runMeProfile(globals(this), deps));
   });
@@ -142,6 +153,59 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
   me.command("id-verification").action(function (this: Command) {
     return runApplicationSafe(() => runMeIdVerification(globals(this), deps));
   });
+  const legalEntities = me
+    .command("legal-entities")
+    .description("Read legal entities consented during OAuth login.");
+  legalEntities.command("list").action(function (this: Command) {
+    return runApplicationSafe(() => runMeLegalEntitiesList(globals(this), deps));
+  });
+  legalEntities
+    .command("get")
+    .argument("<id>")
+    .action(function (this: Command, id: string) {
+      return runApplicationSafe(() => runMeLegalEntitiesGet(id, globals(this), deps));
+    });
+  legalEntities
+    .command("documents")
+    .argument("<id>")
+    .action(function (this: Command, id: string) {
+      return runApplicationSafe(() => runMeLegalEntitiesDocuments(id, globals(this), deps));
+    });
+
+  const tax = program
+    .command("tax")
+    .description("Inspect tax obligations, filings, and filed documents.");
+  tax
+    .command("status")
+    .option("--subject <subject>", "Use personal or a consented legal entity UUID.")
+    .action(function (this: Command) {
+      return runApplicationSafe(() => runTaxStatus(this.opts(), globals(this), deps));
+    });
+  tax
+    .command("list")
+    .option("--subject <subject>", "Use personal or a consented legal entity UUID.")
+    .option("--type <type>", "Filter by income or vat.")
+    .option("--year <year>", "Filter by tax year.")
+    .option("--limit <count>", "Return 1 to 100 filings.")
+    .option("--cursor <cursor>", "Continue a paginated result.")
+    .action(function (this: Command) {
+      return runApplicationSafe(() => runTaxList(this.opts(), globals(this), deps));
+    });
+  tax
+    .command("get")
+    .argument("<filing-id>")
+    .action(function (this: Command, filingId: string) {
+      return runApplicationSafe(() => runTaxGet(filingId, globals(this), deps));
+    });
+  tax
+    .command("download")
+    .argument("<filing-id>")
+    .requiredOption("--document <kind>", "Download assessment or return.")
+    .option("--history-years <years>", "Include 1 to 5 years in an assessment.")
+    .option("--output <path>", "Write the PDF to this path.")
+    .action(function (this: Command, filingId: string) {
+      return runApplicationSafe(() => runTaxDownload(filingId, this.opts(), globals(this), deps));
+    });
 
   const referral = program
     .command("referral")
@@ -179,7 +243,9 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
     .command("login")
     .option("--agent-key", "Prompt for an ak- Agent Key and validate it.")
     .option("--standard-key", "Prompt for an sk- standard API key.")
-    .option("--scopes <csv>", "Comma-separated Agent Key scopes to cache.")
+    .option("--oauth", "Authorize this CLI in a browser using OAuth.")
+    .option("--no-browser", "Do not open the authorization page automatically.")
+    .option("--scopes <csv>", "Comma-separated Agent Key or OAuth scopes.")
     .action(function (this: Command) {
       return runApplicationSafe(() => runAuthLogin(this.opts(), globals(this), deps));
     });

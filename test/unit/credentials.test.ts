@@ -217,6 +217,7 @@ function storedCredential(
   return {
     kind: overrides.kind,
     token: overrides.token,
+    clientId: overrides.clientId,
     refreshToken: overrides.refreshToken,
     scopes: overrides.scopes ?? ["agent:verify_rpn"],
     expiresAt: overrides.expiresAt,

@@ -40,6 +40,7 @@ describe("command scope map", () => {
 
       expect(requirement.requiredScope).toBe(metadata.requiredScope);
       expect(requirement.oauthScope).toBe(metadata.oauthScope);
+      expect(requirement.oauthScopes).toEqual(metadata.oauthScopes);
       expect(credentialTypes(requirement)).toEqual(metadata.credentialTypes);
     }
   });
@@ -190,6 +191,32 @@ describe("scope checks", () => {
     ).toEqual({ ok: false, missing: "eprospera:person.details.read" });
   });
 
+  it("accepts either tax scope for tax commands", () => {
+    expect(
+      checkCommandScope("tax.status", {
+        kind: "oauth",
+        scopes: ["eprospera:person.tax.read"],
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      checkCommandScope("tax.status", {
+        kind: "oauth",
+        scopes: ["eprospera:entity.tax.read"],
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      checkCommandScope("tax.status", {
+        kind: "oauth",
+        scopes: ["openid"],
+      }),
+    ).toEqual({
+      ok: false,
+      missing: "eprospera:person.tax.read or eprospera:entity.tax.read",
+    });
+  });
+
   it("throws authorization errors for missing scopes when asserted", () => {
     expect(
       thrownBy(() =>
@@ -236,11 +263,13 @@ function leafCommands(
 function metadataObject(metadata: OcsMetadata[]): {
   requiredScope?: string;
   oauthScope?: string;
+  oauthScopes?: string[];
   credentialTypes?: CredentialKind[];
 } {
   const output: {
     requiredScope?: string;
     oauthScope?: string;
+    oauthScopes?: string[];
     credentialTypes?: CredentialKind[];
   } = {};
 
@@ -253,6 +282,13 @@ function metadataObject(metadata: OcsMetadata[]): {
     }
     if (entry.name === "credentialTypes" && isCredentialTypeArray(entry.value)) {
       output.credentialTypes = entry.value;
+    }
+    if (
+      entry.name === "oauthScopes" &&
+      Array.isArray(entry.value) &&
+      entry.value.every((item) => typeof item === "string")
+    ) {
+      output.oauthScopes = entry.value;
     }
   }
 

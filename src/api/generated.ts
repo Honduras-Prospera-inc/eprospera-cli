@@ -378,6 +378,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/me/tax/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get tax obligations and lump-sum election status */
+    get: operations["getTaxSummary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/tax/filings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List submitted tax filings */
+    get: operations["listTaxFilings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/tax/filings/{filingId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a submitted tax filing */
+    get: operations["getTaxFiling"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/tax/filings/{filingId}/documents/{document}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download a tax assessment or filed income return */
+    get: operations["downloadTaxDocument"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/referral-codes/{code}/referrals": {
     parameters: {
       query?: never;
@@ -466,6 +534,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/oauth/device_authorization": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start an OAuth device authorization */
+    post: operations["oauthDeviceAuthorization"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/oauth/token": {
     parameters: {
       query?: never;
@@ -475,7 +560,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Exchange an authorization code or refresh token */
+    /**
+     * Exchange an authorization code, device code, or refresh token
+     * @description Use HTTP Basic client authentication when possible. client_secret_post remains supported for compatibility. Public device clients send client_id without a secret. Repeated parameters and multiple client authentication methods are rejected.
+     */
     post: operations["oauthToken"];
     delete?: never;
     options?: never;
@@ -493,7 +581,11 @@ export interface paths {
     /** Get OpenID Connect user claims */
     get: operations["oauthUserinfo"];
     put?: never;
-    post?: never;
+    /**
+     * Get OpenID Connect user claims
+     * @description POST variant of the OpenID Connect UserInfo endpoint.
+     */
+    post: operations["oauthUserinfoPost"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1044,6 +1136,55 @@ export interface components {
         version: string;
       } | null;
     };
+    TaxSubject: {
+      /** @enum {string} */
+      type: "natural_person" | "legal_entity";
+      /** Format: uuid */
+      id: string;
+      name: string;
+      /** @description 14-digit Resident Permit Number. */
+      residentPermitNumber: string | null;
+    };
+    TaxFiling: {
+      /** Format: uuid */
+      id: string;
+      subject: components["schemas"]["TaxSubject"];
+      /** @enum {string} */
+      type: "income" | "vat";
+      period: {
+        year: number;
+        quarter: number | null;
+      };
+      /** Format: date-time */
+      submittedAt: string;
+      amended: boolean;
+      /** @enum {string} */
+      currency: "usd" | "btc";
+      accountingMethod: string | null;
+      reported: {
+        grossIncome: string | null;
+        taxCredit: string | null;
+        taxWithheld: string | null;
+      };
+      usdEquivalent: {
+        grossIncome: string | null;
+        taxCredit: string | null;
+        taxWithheld: string | null;
+      } | null;
+      taxLiability: string | null;
+      exchangeRate: {
+        btcUsdRate: string | null;
+        /** Format: date-time */
+        capturedAt: string | null;
+        source: string | null;
+      } | null;
+      invoice: {
+        /** Format: uuid */
+        id: string;
+        status: string;
+      } | null;
+      availableDocuments: ("assessment" | "return")[];
+    };
     ReferralListResponse: {
       code: string;
       naturalPersons: {
@@ -1083,6 +1224,8 @@ export interface components {
       /** Format: uri */
       authorization_endpoint: string;
       /** Format: uri */
+      device_authorization_endpoint: string;
+      /** Format: uri */
       token_endpoint: string;
       /** Format: uri */
       userinfo_endpoint: string;
@@ -1119,6 +1262,16 @@ export interface components {
         [key: string]: unknown;
       })[];
     };
+    OAuthDeviceAuthorizationResponse: {
+      device_code: string;
+      user_code: string;
+      /** Format: uri */
+      verification_uri: string;
+      /** Format: uri */
+      verification_uri_complete: string;
+      expires_in: number;
+      interval: number;
+    };
     OAuthTokenResponse: {
       access_token: string;
       /** @enum {string} */
@@ -1128,17 +1281,36 @@ export interface components {
       id_token?: string;
       scope?: string;
     };
-    OAuthTokenRequest: {
-      /** @enum {string} */
-      grant_type: "authorization_code" | "refresh_token";
-      code?: string;
-      /** Format: uri */
-      redirect_uri?: string;
-      code_verifier?: string;
-      refresh_token?: string;
-      client_id?: string;
-      client_secret?: string;
-    };
+    OAuthTokenRequest:
+      | {
+          /** @enum {string} */
+          grant_type: "authorization_code";
+          code: string;
+          /** Format: uri */
+          redirect_uri: string;
+          code_verifier?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
+          client_id?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
+          client_secret?: string;
+        }
+      | {
+          /** @enum {string} */
+          grant_type: "refresh_token";
+          refresh_token: string;
+          scope?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
+          client_id?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
+          client_secret?: string;
+        }
+      | {
+          /** @enum {string} */
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code";
+          device_code: string;
+          /** @description Public client identifier; no client secret is sent. */
+          client_id: string;
+        };
     OAuthUserinfo: {
       sub: string;
       name?: string;
@@ -2436,7 +2608,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Private proof-of-address file. */
+      /** @description Proof-of-address file returned through an authenticated endpoint. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -3300,6 +3472,391 @@ export interface operations {
       };
     };
   };
+  getTaxSummary: {
+    parameters: {
+      query?: {
+        subject?: "personal" | string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authorized tax subjects and obligations. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              subjects: {
+                subject: components["schemas"]["TaxSubject"];
+                obligations: {
+                  /** @enum {string} */
+                  type: "income" | "vat";
+                  period: {
+                    year: number;
+                    quarter: number | null;
+                  };
+                  /** Format: date-time */
+                  dueDate: string;
+                  /** @enum {string} */
+                  status: "open" | "overdue";
+                  /** Format: uuid */
+                  filingId: string | null;
+                }[];
+                lumpSumElections: {
+                  /** Format: uuid */
+                  id: string;
+                  taxYear: number | null;
+                  /** Format: date-time */
+                  effectiveDate: string;
+                  /** Format: date-time */
+                  terminationDate: string | null;
+                  /** @enum {string} */
+                  status: "active" | "expired";
+                }[];
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listTaxFilings: {
+    parameters: {
+      query?: {
+        subject?: "personal" | string;
+        type?: "income" | "vat";
+        year?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cursor-paginated submitted tax filings. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["TaxFiling"][];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getTaxFiling: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        filingId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Submitted tax filing. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["TaxFiling"];
+          };
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  downloadTaxDocument: {
+    parameters: {
+      query?: {
+        history_years?: number;
+      };
+      header?: never;
+      path: {
+        filingId: string;
+        document: "assessment" | "return";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description PDF tax document. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
   listReferralCodeReferrals: {
     parameters: {
       query?: never;
@@ -3537,10 +4094,14 @@ export interface operations {
         client_id: string;
         redirect_uri: string;
         scope: string;
-        state?: string;
+        state: string;
         code_challenge?: string;
         code_challenge_method?: "S256";
         nonce?: string;
+        response_mode?: "query" | "fragment" | "form_post";
+        prompt?: string;
+        max_age?: number;
+        login_hint?: string;
       };
       header?: never;
       path?: never;
@@ -3548,12 +4109,122 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Redirect to login, consent, or the client redirect URI. */
-      302: {
+      /** @description HTML auto-submit response for response_mode=form_post. */
+      200: {
         headers: {
           [name: string]: unknown;
         };
+        content: {
+          "text/html": string;
+        };
+      };
+      /** @description Redirect to the exact registered client redirect URI. */
+      303: {
+        headers: {
+          /** @description The exact registered client redirect URI. */
+          Location: string;
+          [name: string]: unknown;
+        };
         content?: never;
+      };
+      /** @description Internal redirect to portal login or consent. */
+      307: {
+        headers: {
+          /** @description The portal login or consent URL. */
+          Location: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthDeviceAuthorization: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/x-www-form-urlencoded": {
+          client_id: string;
+          scope: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Device and user codes for browser authorization. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OAuthDeviceAuthorizationResponse"];
+        };
       };
       /** @description Validation error or precondition failure. */
       400: {
@@ -3737,6 +4408,8 @@ export interface operations {
       /** @description Missing or invalid credential. */
       401: {
         headers: {
+          /** @description Bearer challenge identifying a missing, expired, revoked, or otherwise invalid access token. */
+          "WWW-Authenticate": string;
           [name: string]: unknown;
         };
         content: {
@@ -3746,6 +4419,95 @@ export interface operations {
       /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
       403: {
         headers: {
+          /** @description Bearer challenge identifying the scope required to call UserInfo. */
+          "WWW-Authenticate": string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Resource does not exist or is invisible to the caller. The two are intentionally indistinguishable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Conflicting state (e.g. legal-entity name already taken). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Rate limit exceeded. No `Retry-After` header is currently emitted; back off exponentially. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  oauthUserinfoPost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Claims authorized by the access token. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OAuthUserinfo"];
+        };
+      };
+      /** @description Validation error or precondition failure. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Missing or invalid credential. */
+      401: {
+        headers: {
+          /** @description Bearer challenge identifying a missing, expired, revoked, or otherwise invalid access token. */
+          "WWW-Authenticate": string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Credential lacks the required scope (Agent Key) or insufficient OAuth scope. */
+      403: {
+        headers: {
+          /** @description Bearer challenge identifying the scope required to call UserInfo. */
+          "WWW-Authenticate": string;
           [name: string]: unknown;
         };
         content: {
@@ -3802,7 +4564,9 @@ export interface operations {
         "application/x-www-form-urlencoded": {
           token: string;
           token_type_hint?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
           client_id?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
           client_secret?: string;
         };
       };
@@ -3892,7 +4656,9 @@ export interface operations {
         "application/x-www-form-urlencoded": {
           token: string;
           token_type_hint?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
           client_id?: string;
+          /** @description Required with client_secret_post; omit when using HTTP Basic. */
           client_secret?: string;
         };
       };

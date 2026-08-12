@@ -70,10 +70,17 @@ describe("cli.ocs.yaml", () => {
   });
 
   it("covers the current command surface", () => {
-    expect(leafCommands(document.command)).toHaveLength(27);
+    expect(leafCommands(document.command)).toHaveLength(34);
 
     const commandIds = leafCommandIds(document.command);
-    for (const commandId of ["application.checkout", "referral.list", "visitor-pass.create"]) {
+    for (const commandId of [
+      "application.checkout",
+      "me.legal-entities.list",
+      "tax.status",
+      "tax.download",
+      "referral.list",
+      "visitor-pass.create",
+    ]) {
       expect(commandIds).toContain(commandId);
     }
   });

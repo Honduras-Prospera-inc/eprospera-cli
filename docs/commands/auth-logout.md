@@ -8,7 +8,7 @@
 
 ## Description
 
-Delete locally stored credentials.
+Revoke a stored OAuth session, then delete local credentials.
 
 ## Arguments
 

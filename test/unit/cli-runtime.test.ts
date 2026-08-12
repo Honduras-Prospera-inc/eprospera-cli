@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -280,6 +280,227 @@ describe("CLI runtime", () => {
         scopes: ["agent:verify_rpn"],
       },
     ]);
+  });
+
+  it("authorizes OAuth device login and stores tokens without printing them", async () => {
+    const saved: unknown[] = [];
+    const requests: Array<{ url: string; body: URLSearchParams }> = [];
+    let tokenPolls = 0;
+    const result = await runCommand(["--json", "auth", "login", "--oauth", "--no-browser"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      sleep: async () => {},
+      saveStoredCredential: async (credential) => {
+        saved.push(credential);
+        return "file";
+      },
+      fetch: async (request) => {
+        const body = new URLSearchParams(await request.text());
+        requests.push({ url: request.url, body });
+        if (request.url.endsWith("/api/oauth/device_authorization")) {
+          return Response.json({
+            device_code: "device-secret",
+            user_code: "ABCD-1234",
+            verification_uri: "https://portal.test/oauth/device",
+            verification_uri_complete: "https://portal.test/oauth/device?user_code=ABCD-1234",
+            expires_in: 600,
+            interval: 1,
+          });
+        }
+        tokenPolls += 1;
+        if (tokenPolls === 1) {
+          return Response.json({ error: "authorization_pending" }, { status: 400 });
+        }
+        return Response.json({
+          access_token: "access-secret",
+          token_type: "Bearer",
+          expires_in: 3600,
+          refresh_token: "refresh-secret",
+          scope: "openid offline_access eprospera:person.tax.read",
+        });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toContain("ABCD-1234");
+    expect(result.stdout).not.toContain("access-secret");
+    expect(result.stdout).not.toContain("refresh-secret");
+    expect(requests[0]?.body.get("client_id")).toBe("eprospera-cli");
+    expect(requests[1]?.body.get("grant_type")).toBe(
+      "urn:ietf:params:oauth:grant-type:device_code",
+    );
+    expect(saved).toEqual([
+      expect.objectContaining({
+        kind: "oauth",
+        clientId: "eprospera-cli",
+        token: "access-secret",
+        refreshToken: "refresh-secret",
+        scopes: ["openid", "offline_access", "eprospera:person.tax.read"],
+      }),
+    ]);
+  });
+
+  it("refreshes expiring OAuth credentials before an API request", async () => {
+    const saved: unknown[] = [];
+    const authorizations: Array<string | null> = [];
+    const result = await runCommand(["--json", "me", "profile"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      now: () => 10_000,
+      loadStoredCredential: async () => ({
+        kind: "oauth",
+        token: "old-access",
+        clientId: "eprospera-cli",
+        refreshToken: "old-refresh",
+        scopes: ["eprospera:person.details.read"],
+        expiresAt: 10_001,
+        source: "file",
+      }),
+      saveStoredCredential: async (credential) => {
+        saved.push(credential);
+        return "file";
+      },
+      fetch: async (request) => {
+        authorizations.push(request.headers.get("authorization"));
+        if (request.url.endsWith("/api/oauth/token")) {
+          expect(new URLSearchParams(await request.text()).get("refresh_token")).toBe(
+            "old-refresh",
+          );
+          return Response.json({
+            access_token: "new-access",
+            token_type: "Bearer",
+            expires_in: 3600,
+            refresh_token: "new-refresh",
+            scope: "eprospera:person.details.read",
+          });
+        }
+        return Response.json({ name: "Ada Lovelace" });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(authorizations).toEqual([null, "Bearer new-access"]);
+    expect(saved).toEqual([
+      expect.objectContaining({
+        token: "new-access",
+        refreshToken: "new-refresh",
+        expiresAt: 3_610_000,
+      }),
+    ]);
+    expect(JSON.parse(result.stdout)).toEqual({ name: "Ada Lovelace" });
+  });
+
+  it("lists OAuth-consented legal entities", async () => {
+    let requestUrl: string | undefined;
+    const result = await runCommand(["--json", "me", "legal-entities", "list"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "oauth",
+        token: "oauth-test",
+        scopes: ["eprospera:entity.read"],
+      }),
+      fetch: async (request) => {
+        requestUrl = request.url;
+        return Response.json({ data: [{ id: "entity-1", name: "Acme LLC" }] });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe("https://api.test/api/v1/me/legal-entities");
+    expect(JSON.parse(result.stdout)).toEqual({
+      data: [{ id: "entity-1", name: "Acme LLC" }],
+    });
+  });
+
+  it("reads tax status with either OAuth tax scope", async () => {
+    let requestUrl: string | undefined;
+    const result = await runCommand(["--json", "tax", "status", "--subject", "personal"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "oauth",
+        token: "oauth-test",
+        scopes: ["eprospera:person.tax.read"],
+      }),
+      fetch: async (request) => {
+        requestUrl = request.url;
+        return Response.json({ data: { subjects: [] } });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(requestUrl).toBe("https://api.test/api/v1/me/tax/summary?subject=personal");
+    expect(JSON.parse(result.stdout)).toEqual({ data: { subjects: [] } });
+  });
+
+  it("downloads tax PDFs without overwriting by default", async () => {
+    const dir = await createTempDir();
+    const filingId = "00000000-0000-4000-8000-000000000000";
+    const outputPath = join(dir, "assessment.pdf");
+    const dependencies = {
+      cwd: dir,
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "oauth" as const,
+        token: "oauth-test",
+        scopes: ["eprospera:person.tax.read"],
+      }),
+      fetch: async () =>
+        new Response(new Uint8Array([37, 80, 68, 70]), {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": 'attachment; filename="assessment.pdf"',
+          },
+        }),
+    };
+    const result = await runCommand(
+      ["--json", "tax", "download", filingId, "--document", "assessment", "--output", outputPath],
+      dependencies,
+    );
+
+    expect(result.exitCode).toBe(0);
+    await expect(readFile(outputPath)).resolves.toEqual(Buffer.from([37, 80, 68, 70]));
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      filingId,
+      document: "assessment",
+      path: outputPath,
+      bytes: 4,
+    });
+    if (process.platform !== "win32") {
+      expect((await stat(outputPath)).mode & 0o777).toBe(0o600);
+    }
+
+    const collision = await runCommand(
+      ["--json", "tax", "download", filingId, "--document", "assessment", "--output", outputPath],
+      dependencies,
+    );
+    expect(collision.exitCode).toBe(6);
+    expect(JSON.parse(collision.stdout)).toMatchObject({ error: { code: "FILE_EXISTS" } });
+  });
+
+  it("revokes OAuth tokens before deleting local credentials", async () => {
+    const revokedTokens: string[] = [];
+    let deleted = false;
+    const result = await runCommand(["--json", "--yes", "auth", "logout"], {
+      env: { EPROSPERA_BASE_URL: "https://api.test" },
+      loadStoredCredential: async () => ({
+        kind: "oauth",
+        token: "access-secret",
+        refreshToken: "refresh-secret",
+        scopes: [],
+      }),
+      deleteStoredCredential: async () => {
+        deleted = true;
+        return true;
+      },
+      fetch: async (request) => {
+        revokedTokens.push(new URLSearchParams(await request.text()).get("token") ?? "");
+        return new Response(null, { status: 200 });
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(deleted).toBe(true);
+    expect(revokedTokens.sort()).toEqual(["access-secret", "refresh-secret"]);
+    expect(JSON.parse(result.stdout)).toEqual({ deleted: true, remoteRevoked: true });
+    expect(result.stdout).not.toContain("access-secret");
   });
 
   it("shows when one-off Agent Key scopes are not cached", async () => {
