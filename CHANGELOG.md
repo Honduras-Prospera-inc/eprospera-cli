@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- 874d394: Add OAuth device login with automatic refresh and remote logout revocation, consented
+  legal-entity commands, and read-only personal and entity tax commands with secure PDF downloads.
+
 ## 0.2.0
 
 ### Minor Changes

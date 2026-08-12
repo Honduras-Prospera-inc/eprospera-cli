@@ -2,12 +2,12 @@ $schema: https://opencli.org/draft.json
 opencli: "0.1"
 info:
   title: eprospera
-  version: "0.2.0"
+  version: "0.3.0"
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, legal-entity consent, tax, referral, visitor pass, authentication, configuration,
-    completion, and schema workflows.
+    identity, legal-entity consent, tax, referral, visitor pass, authentication,
+    configuration, completion, and schema workflows.
   contact:
     name: Prospera
     url: https://docs.eprospera.com
@@ -390,7 +390,8 @@ command:
                   required: true
                   description: Consented legal entity UUID.
               examples:
-                - eprospera --json me legal-entities get 00000000-0000-4000-8000-000000000000
+                - eprospera --json me legal-entities get
+                  00000000-0000-4000-8000-000000000000
               metadata:
                 - name: endpoint
                   value: GET /api/v1/me/legal-entities/{id}
@@ -405,7 +406,8 @@ command:
                   required: true
                   description: Consented legal entity UUID.
               examples:
-                - eprospera --json me legal-entities documents 00000000-0000-4000-8000-000000000000
+                - eprospera --json me legal-entities documents
+                  00000000-0000-4000-8000-000000000000
               metadata:
                 - name: endpoint
                   value: GET /api/v1/me/legal-entities/{id}/documents
@@ -468,7 +470,8 @@ command:
                   required: true
                   description: Opaque pagination cursor.
           examples:
-            - eprospera --json tax list --subject personal --type income --year 2025
+            - eprospera --json tax list --subject personal --type income --year
+              2025
           metadata:
             - name: endpoint
               value: GET /api/v1/me/tax/filings
@@ -518,7 +521,8 @@ command:
                   required: true
                   description: Destination file path.
           examples:
-            - eprospera --json tax download 00000000-0000-4000-8000-000000000000 --document assessment
+            - eprospera --json tax download 00000000-0000-4000-8000-000000000000
+              --document assessment
           metadata:
             - name: endpoint
               value: GET /api/v1/me/tax/filings/{filingId}/documents/{document}
