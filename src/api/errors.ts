@@ -1,6 +1,7 @@
-import { type ExitCode, ExitCodes, ExitError } from "../errors.js";
+import { type ErrorRecovery, type ExitCode, ExitCodes, ExitError } from "../errors.js";
 
 export type UpstreamErrorBody = {
+  code?: string;
   error?: unknown;
   error_description?: string;
   errorDescription?: string;
@@ -41,6 +42,7 @@ export function apiErrorFromResponse(response: Response, body: unknown): ExitErr
     exitCode: mapHttpStatusToExitCode(response.status),
     httpStatus: response.status,
     details: upstream.details ?? null,
+    recovery: upstream.recovery,
   });
 }
 
@@ -63,32 +65,46 @@ function normalizeUpstreamError(body: unknown): {
   code?: string;
   message?: string;
   details?: unknown;
+  recovery?: ErrorRecovery;
 } {
   if (!isRecord(body)) {
     return {};
   }
 
   const { error } = body;
+  const recovery = recoveryContext(body);
   if (isRecord(error)) {
     return {
-      code: stringValue(error.code) ?? stringValue(error.error),
+      code: stringValue(body.code) ?? stringValue(error.code) ?? stringValue(error.error),
       message:
         stringValue(error.message) ??
         stringValue(error.error_description) ??
         stringValue(error.errorDescription),
       details: "details" in error ? error.details : body.details,
+      recovery,
     };
   }
 
   return {
-    code: stringValue(error),
+    code: stringValue(body.code) ?? stringValue(error),
     message:
       stringValue(body.error_description) ??
       stringValue(body.errorDescription) ??
       stringValue(body.message) ??
       stringValue(error),
     details: body.details,
+    recovery,
   };
+}
+
+function recoveryContext(body: Record<string, unknown>): ErrorRecovery | undefined {
+  const context: ErrorRecovery = {};
+  for (const key of ["data", "nextSteps", "invoiceId", "filingId"]) {
+    if (key in body) {
+      context[key] = body[key];
+    }
+  }
+  return Object.keys(context).length === 0 ? undefined : context;
 }
 
 function defaultCodeForStatus(status: number): string {

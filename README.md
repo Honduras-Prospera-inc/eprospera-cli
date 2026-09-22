@@ -7,8 +7,9 @@
 
 TypeScript command-line interface for the e-Prospera public API.
 
-`eprospera` is designed for scriptable legal-entity, application, identity, tax, auth,
-configuration, completion, and schema workflows. The CLI is JSON-friendly by
+`eprospera` is designed for scriptable legal-entity, amendment, certificate,
+application, personal-document, identity, tax, auth, configuration, completion,
+and schema workflows. The CLI is JSON-friendly by
 default so it can be used cleanly from shells, CI jobs, and agentic tools.
 
 ## Status
@@ -45,8 +46,10 @@ The command surface is defined in `cli.ocs.yaml`.
 | Area | Commands |
 | --- | --- |
 | Legal entities | `entity verify`, `entity search`, `entity get`, `entity documents` |
+| Amendments | `entity amendment list/create/get/update/pay/submit` |
+| Certificates of Good Standing | `entity certificate list/create/get/pay` |
 | Applications | `application list`, `application create`, `application get`, `application pay`, `application checkout`, `application watch` |
-| Current user | `me profile`, `me residency`, `me id-verification`, `me legal-entities list/get/documents` |
+| Current user | `me profile`, `me residency`, `me id-verification`, `me documents`, `me legal-entities list/get/documents` |
 | Taxes | `tax status`, `tax list`, `tax get`, `tax download` |
 | Referrals | `referral list` |
 | Visitor passes | `visitor-pass create` |
@@ -107,9 +110,119 @@ The tax commands are read-only. They can inspect obligations and submitted
 filings or download an assessment or return, but cannot create, edit, submit, or
 pay a filing.
 
+## Amendments and Certificates of Good Standing
+
+These commands support standard API keys and Agent Keys. Agent Keys require
+`agent:entity.filing.read` for list/get, `agent:entity.filing.create` for
+create/update, and `agent:entity.filing.pay` for pay/submit. The API enforces
+active representation; Agent Keys are limited to API-incorporated entities and
+writes also require an active Manifestation of Will. OAuth is not supported for
+these filing commands.
+
+Each command performs one API step. For example, put the proposed changes in
+`amendment.json`:
+
+```json
+{"updatedName":"Example Holdings","updatedExtension":"LLC"}
+```
+
+```sh
+eprospera --json entity amendment list "$ENTITY_ID"
+eprospera --json --dry-run entity amendment create "$ENTITY_ID" --file amendment.json
+eprospera --json --yes entity amendment create "$ENTITY_ID" --file amendment.json
+eprospera --json entity amendment get "$ENTITY_ID" "$FILING_ID"
+eprospera --json --yes entity amendment update "$ENTITY_ID" "$FILING_ID" --file changes.json
+eprospera --json --yes entity amendment pay "$ENTITY_ID" "$FILING_ID" --voucher "$VOUCHER_CODE"
+```
+
+Save `data.id` from creation as the filing ID. Creation can reuse the existing
+Draft and **replaces all proposals**, clearing omitted fields. Use `update` for
+later edits: omitted fields are preserved, and explicit `null` clears a proposal.
+Creation requires at least one non-null change; update requires at least one
+field. Every revision invalidates the previous signature.
+
+An active representative must open the returned `data.nextSteps.signatureUrl`
+and sign in the portal before payment. The CLI does not open the browser or sign
+on the representative's behalf. Full-coverage voucher payment also submits the
+amendment for review. If paid through the portal, read the filing and submit when
+`data.nextSteps.submitReady` is true:
+
+```sh
+eprospera --json --yes entity amendment submit "$ENTITY_ID" "$FILING_ID"
+```
+
+`Approved` means registry changes were applied; document generation can still be
+pending. Retrieve generated files through `entity documents`; do not assume the
+first document belongs to this filing. `Rejected` includes a rejection reason.
+
+For a Certificate of Good Standing:
+
+```sh
+eprospera --json entity certificate list "$ENTITY_ID"
+eprospera --json --yes entity certificate create "$ENTITY_ID"
+eprospera --json --yes entity certificate pay "$ENTITY_ID" "$REQUEST_ID" --voucher "$VOUCHER_CODE"
+eprospera --json entity certificate get "$ENTITY_ID" "$REQUEST_ID"
+```
+
+The list response includes `eligibility`; `taxCompliant: null` is not confirmation
+of compliance. Creation sends `{}` by default and can reuse an open or issued
+request; save its `data.id`. Optional `--file contest.json` accepts:
+
+```json
+{"contest":{"note":"Please review the payment confirmation.","proofUrl":"https://example.test/replace-with-approved-portal-upload"}}
+```
+
+Unknown top-level or contest fields are rejected locally to catch misspelled keys.
+The proof URL must be an actual approved portal upload; the placeholder above is
+not valid evidence. There is no certificate-proof upload command. Reuse of an
+issued request does not establish its current eligibility. Payment starts
+asynchronous issuance/review; a paid invoice can temporarily remain in
+`Pending Payment`. Read the same request until `Issued`, `Rejected`, or
+`Cancelled`. Only `Issued` with a non-null `documentUrl` provides the certificate.
+There is no separate certificate submit step.
+
+New filing writes are sent once, without automatic retries. An invalid voucher
+can leave an amendment invoiced and locked; a timeout or error can occur after
+payment succeeds. Read the existing resource before another write. For
+`submission_not_queued`, retain the filing/invoice IDs and retry `amendment submit`
+when appropriate; do not create a replacement or pay again. Structured errors
+preserve the upstream `code` and original `error.details`, with recovery state
+provided separately under `error.recovery`. Reads keep
+the existing backoff and `Retry-After` handling. See the
+[API filing guide](https://docs.eprospera.com/entity-filings) for lifecycle and recovery details.
+
+## Personal Documents
+
+`me documents` returns document metadata/URLs and the active Agreement of
+Coexistence. Use an Agent Key with `agent:person.documents.read`, or OAuth with
+`eprospera:person.documents.read`. Standard API keys are not supported.
+
+Default OAuth login scopes are unchanged. Request fresh consent explicitly:
+
+```sh
+eprospera auth login --oauth --scopes "openid profile email offline_access eprospera:person.documents.read"
+eprospera --json me documents
+```
+
+The OAuth client must allow this scope. `--scopes` replaces the default scope
+list, and login replaces the stored session: include any other scopes you still
+need. Existing tokens do not acquire new permissions automatically.
+
+An empty document list, a null active agreement, or a null signed-document URL
+is a valid response. Historical files are not proof of an active agreement; a
+template PDF is not a signed document. The CLI prints the returned metadata and
+does not download files. If downloading a URL separately, never forward the API
+Bearer credential to the document host. See the
+[personal documents guide](https://docs.eprospera.com/personal-and-applicant-documents).
+
+New commands preserve full API envelopes in JSON/raw mode. Select nested fields
+with, for example, `--fields data.id,data.nextSteps.signatureUrl` on amendment
+detail, or `--fields agreementOfCoexistence` on personal documents. Human output
+also includes eligibility and active-agreement metadata alongside the data.
+
 ## Sensitive Output
 
-Tax responses, assessments, returns, and some legal-entity documents contain
+Personal documents, filing responses, tax assessments, returns, and legal-entity documents contain
 confidential information. Treat terminal output, redirected JSON, and downloaded
 files accordingly:
 
@@ -175,10 +288,17 @@ configured for repository `Honduras-Prospera-inc/eprospera-cli` and workflow
 file `release.yml`, so future publishes should not require a long-lived
 `NPM_TOKEN` secret.
 
-If the GitHub organization blocks `GITHUB_TOKEN` from creating release PRs, set a
-`CHANGESETS_GITHUB_TOKEN` repository secret with pull request and contents write
-permissions. The release workflow falls back to `GITHUB_TOKEN` when that secret
-is not present.
+Merging a feature PR with a Changeset starts the release workflow. It applies the
+version bump and changelog, synchronizes `cli.ocs.yaml` with `package.json`, and
+regenerates command docs. The CLI reads that package version. The pending minor
+Changeset for filing and personal-document commands targets `0.4.0` from `0.3.0`.
+
+With a `CHANGESETS_GITHUB_TOKEN` repository secret granting pull request and
+contents write permissions, the workflow opens or updates the release PR.
+Without it, the workflow still bumps versions on `changeset-release/main`, but a
+maintainer must open that branch's PR because the current organization policy
+blocks GitHub Actions from creating PRs. Merging the release PR separately
+triggers npm publishing, the GitHub release, and release bundle uploads.
 
 ```sh
 npm install -g @prospera/eprospera-cli

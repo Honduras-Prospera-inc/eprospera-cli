@@ -6,7 +6,8 @@ info:
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, legal-entity consent, tax, referral, visitor pass, authentication,
+    identity, entity amendments and certificates, personal documents, legal-entity
+    consent, tax, referral, visitor pass, authentication,
     configuration, completion, and schema workflows.
   contact:
     name: Prospera
@@ -103,7 +104,7 @@ command:
       description: Application or coupon entered a terminal failure state.
   commands:
     - name: entity
-      description: Verify, search, inspect, and fetch documents for legal entities.
+      description: Verify, search, inspect, fetch documents, and manage entity filings.
       commands:
         - name: verify
           description: Verify whether an RPN exists and is active.
@@ -166,6 +167,254 @@ command:
               value: agent:entity.documents.read
             - name: credentialTypes
               value: [ ak, sk ]
+        - name: amendment
+          description: Create, revise, pay, submit, and inspect entity amendments.
+          commands:
+            - name: list
+              description: List all amendment filings, newest first.
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+              examples:
+                - eprospera --json entity amendment list 11111111-1111-4111-8111-111111111111
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/legal_entities/{id}/amendments
+                - name: requiredScope
+                  value: agent:entity.filing.read
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: create
+              description: Create a draft or replace all proposals on the existing draft; omitted fields are
+                cleared.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+              options:
+                - name: --file
+                  required: true
+                  description: Read proposed changes from a JSON file.
+                  arguments:
+                    - name: path
+                      required: true
+                      description: Path to a JSON request body.
+              examples:
+                - eprospera --json --yes entity amendment create 11111111-1111-4111-8111-111111111111
+                  --file amendment.json
+              metadata:
+                - name: endpoint
+                  value: POST /api/v1/legal_entities/{id}/amendments
+                - name: requiredScope
+                  value: agent:entity.filing.create
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: get
+              description: Read amendment status, invoice, and signing/submission next steps.
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: filing-id
+                  required: true
+                  description: Amendment filing UUID.
+              examples:
+                - eprospera --json entity amendment get 11111111-1111-4111-8111-111111111111
+                  22222222-2222-4222-8222-222222222222
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/legal_entities/{id}/amendments/{filingId}
+                - name: requiredScope
+                  value: agent:entity.filing.read
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: update
+              description: Revise a Draft; omitted fields are preserved and null clears a proposal.
+                Invalidates signing.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: filing-id
+                  required: true
+                  description: Amendment filing UUID.
+              options:
+                - name: --file
+                  required: true
+                  description: Read proposed changes from a JSON file.
+                  arguments:
+                    - name: path
+                      required: true
+                      description: Path to a JSON request body.
+              examples:
+                - eprospera --json --yes entity amendment update 11111111-1111-4111-8111-111111111111
+                  22222222-2222-4222-8222-222222222222 --file amendment.json
+              metadata:
+                - name: endpoint
+                  value: PATCH /api/v1/legal_entities/{id}/amendments/{filingId}
+                - name: requiredScope
+                  value: agent:entity.filing.create
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: pay
+              description: Pay a signed amendment with a full-coverage voucher and submit it for review.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: filing-id
+                  required: true
+                  description: Amendment filing UUID.
+              options:
+                - name: --voucher
+                  required: true
+                  description: Full-coverage voucher code.
+                  arguments:
+                    - name: code
+                      required: true
+                      description: Full-coverage voucher code.
+              examples:
+                - eprospera --json --yes entity amendment pay 11111111-1111-4111-8111-111111111111
+                  22222222-2222-4222-8222-222222222222 --voucher EXAMPLE_VOUCHER
+              metadata:
+                - name: endpoint
+                  value: POST /api/v1/legal_entities/{id}/amendments/{filingId}/pay/voucher
+                - name: requiredScope
+                  value: agent:entity.filing.pay
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: submit
+              description: Submit a signed, paid amendment or retry pending review dispatch.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: filing-id
+                  required: true
+                  description: Amendment filing UUID.
+              examples:
+                - eprospera --json --yes entity amendment submit 11111111-1111-4111-8111-111111111111
+                  22222222-2222-4222-8222-222222222222
+              metadata:
+                - name: endpoint
+                  value: POST /api/v1/legal_entities/{id}/amendments/{filingId}/submit
+                - name: requiredScope
+                  value: agent:entity.filing.pay
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+        - name: certificate
+          description: Request, pay, and inspect Certificates of Good Standing.
+          commands:
+            - name: list
+              description: List certificate requests and current eligibility, including tax compliance.
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+              examples:
+                - eprospera --json entity certificate list 11111111-1111-4111-8111-111111111111
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/legal_entities/{id}/certificate_requests
+                - name: requiredScope
+                  value: agent:entity.filing.read
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: create
+              description: Prepare a certificate request and invoice, or reuse an existing open or issued request.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+              options:
+                - name: --file
+                  description: Read optional contest evidence from a JSON file; otherwise send {}.
+                  arguments:
+                    - name: path
+                      required: true
+                      description: Path to a JSON request body.
+              examples:
+                - eprospera --json --yes entity certificate create 11111111-1111-4111-8111-111111111111
+              metadata:
+                - name: endpoint
+                  value: POST /api/v1/legal_entities/{id}/certificate_requests
+                - name: requiredScope
+                  value: agent:entity.filing.create
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: get
+              description: Read certificate status and document URL; Issued, Rejected, and Cancelled are terminal.
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: request-id
+                  required: true
+                  description: Certificate request UUID.
+              examples:
+                - eprospera --json entity certificate get 11111111-1111-4111-8111-111111111111
+                  33333333-3333-4333-8333-333333333333
+              metadata:
+                - name: endpoint
+                  value: GET /api/v1/legal_entities/{id}/certificate_requests/{requestId}
+                - name: requiredScope
+                  value: agent:entity.filing.read
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
+            - name: pay
+              description: Pay with a full-coverage voucher; certificate review and issuance are asynchronous.
+              interactive: true
+              arguments:
+                - name: entity-id
+                  required: true
+                  description: Legal entity UUID.
+                - name: request-id
+                  required: true
+                  description: Certificate request UUID.
+              options:
+                - name: --voucher
+                  required: true
+                  description: Full-coverage voucher code.
+                  arguments:
+                    - name: code
+                      required: true
+                      description: Full-coverage voucher code.
+              examples:
+                - eprospera --json --yes entity certificate pay 11111111-1111-4111-8111-111111111111
+                  33333333-3333-4333-8333-333333333333 --voucher EXAMPLE_VOUCHER
+              metadata:
+                - name: endpoint
+                  value: POST /api/v1/legal_entities/{id}/certificate_requests/{requestId}/pay/voucher
+                - name: requiredScope
+                  value: agent:entity.filing.pay
+                - name: credentialTypes
+                  value:
+                    - ak
+                    - sk
     - name: application
       description: Create, pay, list, inspect, and watch legal-entity applications.
       commands:
@@ -369,6 +618,22 @@ command:
               value: eprospera:person.id_verification.read
             - name: credentialTypes
               value: [ ak, oauth ]
+        - name: documents
+          description: Read personal document metadata, URLs, and the active Agreement of Coexistence.
+            Does not download files.
+          examples:
+            - eprospera --json me documents
+          metadata:
+            - name: endpoint
+              value: GET /api/v1/me/natural-person/documents
+            - name: requiredScope
+              value: agent:person.documents.read
+            - name: oauthScope
+              value: eprospera:person.documents.read
+            - name: credentialTypes
+              value:
+                - ak
+                - oauth
         - name: legal-entities
           description: Read legal entities consented during OAuth login.
           commands:

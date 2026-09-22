@@ -15,10 +15,25 @@ import { runConfigGet } from "./commands/config/get.js";
 import { runConfigList } from "./commands/config/list.js";
 import { runConfigSet } from "./commands/config/set.js";
 import { runConfigUnset } from "./commands/config/unset.js";
+import {
+  runAmendmentCreate,
+  runAmendmentGet,
+  runAmendmentList,
+  runAmendmentPay,
+  runAmendmentSubmit,
+  runAmendmentUpdate,
+} from "./commands/entity/amendment.js";
+import {
+  runCertificateCreate,
+  runCertificateGet,
+  runCertificateList,
+  runCertificatePay,
+} from "./commands/entity/certificate.js";
 import { runEntityDocuments } from "./commands/entity/documents.js";
 import { runEntityGet } from "./commands/entity/get.js";
 import { runEntitySearch } from "./commands/entity/search.js";
 import { runEntityVerify } from "./commands/entity/verify.js";
+import { runMeDocuments } from "./commands/me/documents.js";
 import { runMeIdVerification } from "./commands/me/id-verification.js";
 import {
   runMeLegalEntitiesDocuments,
@@ -69,7 +84,7 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
 
   const entity = program
     .command("entity")
-    .description("Verify, search, inspect, and fetch documents.");
+    .description("Verify, search, inspect, fetch documents, and manage entity filings.");
   entity
     .command("verify")
     .argument("<rpn>")
@@ -93,6 +108,115 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
     .argument("<id>")
     .action(function (this: Command, id: string) {
       return runApplicationSafe(() => runEntityDocuments(id, globals(this), deps));
+    });
+
+  const amendment = entity
+    .command("amendment")
+    .description("Create, revise, pay, submit, and inspect entity amendments.");
+  amendment
+    .command("list")
+    .description("List all amendment filings, newest first.")
+    .argument("<entity-id>")
+    .action(function (this: Command, entityId: string) {
+      return runApplicationSafe(() => runAmendmentList(entityId, globals(this), deps));
+    });
+  amendment
+    .command("create")
+    .description(
+      "Create a draft or replace all proposals on the existing draft; omitted fields are cleared.",
+    )
+    .argument("<entity-id>")
+    .requiredOption("--file <path>", "Read proposed changes from a JSON file.")
+    .action(function (this: Command, entityId: string) {
+      return runApplicationSafe(() =>
+        runAmendmentCreate(entityId, this.opts(), globals(this), deps),
+      );
+    });
+  amendment
+    .command("get")
+    .description("Read amendment status, invoice, and signing/submission next steps.")
+    .argument("<entity-id>")
+    .argument("<filing-id>")
+    .action(function (this: Command, entityId: string, filingId: string) {
+      return runApplicationSafe(() => runAmendmentGet(entityId, filingId, globals(this), deps));
+    });
+  amendment
+    .command("update")
+    .description(
+      "Revise a Draft; omitted fields are preserved and null clears a proposal. Invalidates signing.",
+    )
+    .argument("<entity-id>")
+    .argument("<filing-id>")
+    .requiredOption("--file <path>", "Read proposed changes from a JSON file.")
+    .action(function (this: Command, entityId: string, filingId: string) {
+      return runApplicationSafe(() =>
+        runAmendmentUpdate(entityId, filingId, this.opts(), globals(this), deps),
+      );
+    });
+  amendment
+    .command("pay")
+    .description("Pay a signed amendment with a full-coverage voucher and submit it for review.")
+    .argument("<entity-id>")
+    .argument("<filing-id>")
+    .requiredOption("--voucher <code>", "Full-coverage voucher code.")
+    .action(function (this: Command, entityId: string, filingId: string) {
+      return runApplicationSafe(() =>
+        runAmendmentPay(entityId, filingId, this.opts(), globals(this), deps),
+      );
+    });
+  amendment
+    .command("submit")
+    .description("Submit a signed, paid amendment or retry pending review dispatch.")
+    .argument("<entity-id>")
+    .argument("<filing-id>")
+    .action(function (this: Command, entityId: string, filingId: string) {
+      return runApplicationSafe(() => runAmendmentSubmit(entityId, filingId, globals(this), deps));
+    });
+
+  const certificate = entity
+    .command("certificate")
+    .description("Request, pay, and inspect Certificates of Good Standing.");
+  certificate
+    .command("list")
+    .description("List certificate requests and current eligibility, including tax compliance.")
+    .argument("<entity-id>")
+    .action(function (this: Command, entityId: string) {
+      return runApplicationSafe(() => runCertificateList(entityId, globals(this), deps));
+    });
+  certificate
+    .command("create")
+    .description(
+      "Prepare a certificate request and invoice, or reuse an existing open or issued request.",
+    )
+    .argument("<entity-id>")
+    .option("--file <path>", "Read optional contest evidence from a JSON file; otherwise send {}.")
+    .action(function (this: Command, entityId: string) {
+      return runApplicationSafe(() =>
+        runCertificateCreate(entityId, this.opts(), globals(this), deps),
+      );
+    });
+  certificate
+    .command("get")
+    .description(
+      "Read certificate status and document URL; Issued, Rejected, and Cancelled are terminal.",
+    )
+    .argument("<entity-id>")
+    .argument("<request-id>")
+    .action(function (this: Command, entityId: string, requestId: string) {
+      return runApplicationSafe(() => runCertificateGet(entityId, requestId, globals(this), deps));
+    });
+  certificate
+    .command("pay")
+    .description(
+      "Pay with a full-coverage voucher; certificate review and issuance are asynchronous.",
+    )
+    .argument("<entity-id>")
+    .argument("<request-id>")
+    .requiredOption("--voucher <code>", "Full-coverage voucher code.")
+    .action(function (this: Command, entityId: string, requestId: string) {
+      return runApplicationSafe(() =>
+        runCertificatePay(entityId, requestId, this.opts(), globals(this), deps),
+      );
     });
 
   const application = program
@@ -153,6 +277,11 @@ export function createProgram(deps: RuntimeDependencies = {}): Command {
   me.command("id-verification").action(function (this: Command) {
     return runApplicationSafe(() => runMeIdVerification(globals(this), deps));
   });
+  me.command("documents")
+    .description("Read personal document metadata, URLs, and the active Agreement of Coexistence.")
+    .action(function (this: Command) {
+      return runApplicationSafe(() => runMeDocuments(globals(this), deps));
+    });
   const legalEntities = me
     .command("legal-entities")
     .description("Read legal entities consented during OAuth login.");

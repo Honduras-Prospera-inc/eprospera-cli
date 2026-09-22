@@ -15,6 +15,7 @@ export const ExitCodes = {
 export type ExitCode = (typeof ExitCodes)[keyof typeof ExitCodes];
 
 export type ErrorDetails = unknown;
+export type ErrorRecovery = Record<string, unknown>;
 
 export type ErrorEnvelope = {
   error: {
@@ -22,6 +23,7 @@ export type ErrorEnvelope = {
     message: string;
     httpStatus?: number;
     details?: ErrorDetails;
+    recovery?: ErrorRecovery;
   };
 };
 
@@ -31,6 +33,7 @@ export type ExitErrorOptions = {
   exitCode: ExitCode;
   httpStatus?: number;
   details?: ErrorDetails;
+  recovery?: ErrorRecovery;
   cause?: unknown;
 };
 
@@ -39,6 +42,7 @@ export class ExitError extends Error {
   readonly exitCode: ExitCode;
   readonly httpStatus?: number;
   readonly details?: ErrorDetails;
+  readonly recovery?: ErrorRecovery;
 
   constructor(options: ExitErrorOptions) {
     super(options.message, { cause: options.cause });
@@ -47,6 +51,7 @@ export class ExitError extends Error {
     this.exitCode = options.exitCode;
     this.httpStatus = options.httpStatus;
     this.details = options.details;
+    this.recovery = options.recovery;
   }
 
   toEnvelope(): ErrorEnvelope {
@@ -56,6 +61,7 @@ export class ExitError extends Error {
         message: this.message,
         httpStatus: this.httpStatus,
         details: this.details,
+        ...(this.recovery === undefined ? {} : { recovery: this.recovery }),
       },
     };
   }
