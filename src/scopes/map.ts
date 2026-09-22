@@ -24,6 +24,46 @@ const commandScopes = {
     requiredScope: "agent:entity.documents.read",
     credentialTypes: ["ak", "sk"],
   },
+  "entity.amendment.list": {
+    requiredScope: "agent:entity.filing.read",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.amendment.create": {
+    requiredScope: "agent:entity.filing.create",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.amendment.get": {
+    requiredScope: "agent:entity.filing.read",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.amendment.update": {
+    requiredScope: "agent:entity.filing.create",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.amendment.pay": {
+    requiredScope: "agent:entity.filing.pay",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.amendment.submit": {
+    requiredScope: "agent:entity.filing.pay",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.certificate.list": {
+    requiredScope: "agent:entity.filing.read",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.certificate.create": {
+    requiredScope: "agent:entity.filing.create",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.certificate.get": {
+    requiredScope: "agent:entity.filing.read",
+    credentialTypes: ["ak", "sk"],
+  },
+  "entity.certificate.pay": {
+    requiredScope: "agent:entity.filing.pay",
+    credentialTypes: ["ak", "sk"],
+  },
   "application.list": {
     requiredScope: "agent:entity.application.read",
     credentialTypes: ["ak", "sk"],
@@ -60,6 +100,11 @@ const commandScopes = {
   "me.id-verification": {
     requiredScope: "agent:person.id_verification.read",
     oauthScope: "eprospera:person.id_verification.read",
+    credentialTypes: ["ak", "oauth"],
+  },
+  "me.documents": {
+    requiredScope: "agent:person.documents.read",
+    oauthScope: "eprospera:person.documents.read",
     credentialTypes: ["ak", "oauth"],
   },
   "me.legal-entities.list": {

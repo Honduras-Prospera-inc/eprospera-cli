@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-11
+Last updated: 2026-09-22
 
 This file tracks what has been implemented, what remains, and implementation
 notes that should survive across agent sessions.
@@ -88,6 +88,16 @@ notes that should survive across agent sessions.
   - tax obligation, filing list/detail, and protected PDF download commands
   - local any-of scope checks for personal or entity tax access
   - leaf command count is now 34, with generated API types and command docs
+- Step 15: Published filing and personal-document APIs (2026-09-22):
+  - six explicit `entity amendment` commands and four `entity certificate` commands
+  - `me documents` for Agent Keys or explicitly consented OAuth credentials
+  - published API types, strict amendment validation, offline write dry runs,
+    and no automatic retries for new filing writes
+  - complete output envelopes, human-visible next steps/eligibility/agreement
+    metadata, and structured error codes with filing/invoice context in `error.recovery`
+    while preserving original `error.details`; unknown certificate input keys are rejected
+  - 45 leaf commands with matching OCS, scope maps, docs, and completions
+  - minor Changeset prepared; publishing is separate
 
 ## Remaining Build Plan
 
@@ -98,13 +108,16 @@ notes that should survive across agent sessions.
 
 ## Current Caveats
 
-- `@prospera/eprospera-cli@0.1.2` is the latest published npm version; the
-  v0.2.0 surface (voucher pay, checkout, referrals, visitor passes) is pending
-  the next Changesets release.
-- Deferred coverage: the Partner Keys (`pk-`) residency application API (10
-  operations, cursor pagination, Idempotency-Key and expectedVersion contracts).
-- OAuth login and tax commands require the corresponding e-Próspera server
-  migration and public client registration to be deployed first.
+- The checked-in package version remains `0.3.0` until Changesets applies the
+  pending minor release to `0.4.0`. Merging the feature PR triggers that bump on
+  `changeset-release/main`; without `CHANGESETS_GITHUB_TOKEN`, a maintainer must
+  open the release PR. Publishing follows its separate merge. No package has
+  been published as part of this update.
+- Deferred coverage: Partner Keys (`pk-`), including applicant documents and
+  residency workflows; unpublished tax writes, renewals, annual reports, and billing.
+- Personal document access requires the OAuth client to allow
+  `eprospera:person.documents.read` and a fresh consent grant. Default scopes
+  are unchanged. There are no new browser, polling, or download helpers.
 - npm package access status is public under the `prospera` org.
 - npm trusted publishing is configured for GitHub Actions repository
   `Honduras-Prospera-inc/eprospera-cli`, workflow file `release.yml`, and

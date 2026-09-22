@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 
@@ -74,6 +74,52 @@ try {
     shell: process.platform === "win32",
   });
   assertIncludes(completion.stdout, "_eprospera_completions", "bash completion output");
+  assertIncludes(completion.stdout, "amendment", "amendment completion");
+  assertIncludes(completion.stdout, "certificate", "certificate completion");
+
+  // Exercise the installed build and nested command registration without an API call.
+  const entityId = "11111111-1111-4111-8111-111111111111";
+  const filingId = "22222222-2222-4222-8222-222222222222";
+  await writeFile(join(installDir, "changes.json"), JSON.stringify({ updatedName: null }));
+  const amendment = await run(
+    bin,
+    [
+      "--json",
+      "--dry-run",
+      "entity",
+      "amendment",
+      "update",
+      entityId,
+      filingId,
+      "--file",
+      "changes.json",
+    ],
+    { cwd: installDir, shell: process.platform === "win32" },
+  );
+  const amendmentJson = JSON.parse(amendment.stdout);
+  assertEquals(amendmentJson.dryRun, true, "amendment dry run");
+  assertEquals(amendmentJson.request.method, "PATCH", "amendment request method");
+  assertEquals(amendmentJson.request.body.updatedName, null, "amendment clearing proposal");
+
+  const certificate = await run(
+    bin,
+    ["--json", "--dry-run", "entity", "certificate", "create", entityId],
+    { cwd: installDir, shell: process.platform === "win32" },
+  );
+  const certificateJson = JSON.parse(certificate.stdout);
+  assertEquals(certificateJson.dryRun, true, "certificate dry run");
+  assertEquals(
+    certificateJson.request.path,
+    `/api/v1/legal_entities/${entityId}/certificate_requests`,
+    "certificate request path",
+  );
+  assertEquals(JSON.stringify(certificateJson.request.body), "{}", "certificate default body");
+
+  const documents = await run(bin, ["me", "documents", "--help"], {
+    cwd: installDir,
+    shell: process.platform === "win32",
+  });
+  assertIncludes(documents.stdout, "Agreement of Coexistence", "personal documents help");
 
   const globalPrefix = join(tempRoot, "global");
   await run(

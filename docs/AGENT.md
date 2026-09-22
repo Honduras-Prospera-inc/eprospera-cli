@@ -5,8 +5,8 @@
 `eprospera` is a JSON-first CLI for the e-Prospera public API. Use it to verify
 entities, inspect applications, read current-user and tax data, create or monitor
 legal-entity applications, pay with vouchers or hosted checkout, inspect
-referral-code attribution, and submit visitor pass applications. This guide
-reflects `@prospera/eprospera-cli@0.2.0` and later.
+referral-code attribution, submit visitor passes, manage amendments/certificates,
+and read personal documents. This guide reflects the next minor release after 0.3.0.
 
 Most agent workflows use these commands:
 
@@ -32,6 +32,11 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | `entity search <query>` | `ak`, `sk` | `agent:registry.search` | `0,2,3,4,7,8,9` | Empty or too-broad search terms. |
 | `entity get <id>` | `ak`, `sk` | `agent:entity.read` | `0,2,3,4,5,7,9` | ID must be a UUID. |
 | `entity documents <id>` | `ak`, `sk` | `agent:entity.documents.read` | `0,2,3,4,5,7,9` | Missing document-read scope. |
+| `entity amendment list/get` | `ak`, `sk` | `agent:entity.filing.read` | `0,2,3,4,5,7,9` | Requires entity ID; get also requires filing ID. |
+| `entity amendment create/update` | `ak`, `sk` | `agent:entity.filing.create` | `0,2,3,4,5,6,7,8,9` | Requires `--file`; revisions invalidate signing. |
+| `entity amendment pay/submit` | `ak`, `sk` | `agent:entity.filing.pay` | `0,1,2,3,4,5,6,7,8,9` | Signing/payment prerequisites; read state after errors. |
+| `entity certificate list/get` | `ak`, `sk` | `agent:entity.filing.read` | `0,2,3,4,5,7,9` | Check eligibility and tax compliance separately. |
+| `entity certificate create/pay` | `ak`, `sk` | `agent:entity.filing.create` / `.pay` | `0,1,2,3,4,5,6,7,8,9` | Contests require approved portal proof; issuance is asynchronous. |
 | `application list` | `ak`, `sk` | `agent:entity.application.read` | `0,3,4,7,9` | Credential cannot see the target application. |
 | `application create --file <path>` | `ak`, `sk` | `agent:entity.application.create` | `0,2,3,4,7,8,9` | JSON body fails local schema validation. |
 | `application get <id>` | `ak`, `sk` | `agent:entity.application.read` | `0,2,3,4,5,7,9` | ID must be a UUID. |
@@ -41,6 +46,7 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 | `me profile` | `ak`, `oauth` | `agent:person.details.read` | `0,3,4,7,9` | Standard API keys are not valid for `me` commands. |
 | `me residency` | `ak`, `oauth` | `agent:person.residency.read` | `0,3,4,7,9` | Missing residency-read scope. |
 | `me id-verification` | `ak`, `oauth` | `agent:person.id_verification.read` | `0,3,4,7,9` | Missing ID-verification scope. |
+| `me documents` | `ak`, `oauth` | `agent:person.documents.read` / `eprospera:person.documents.read` | `0,3,4,5,7,9` | Default OAuth login does not request document consent. |
 | `me legal-entities list` | `oauth` | `eprospera:entity.read` | `0,3,4,7,9` | Entity was not selected during consent. |
 | `me legal-entities get <id>` | `oauth` | `eprospera:entity.read` | `0,2,3,4,5,7,9` | Entity is no longer represented or consented. |
 | `me legal-entities documents <id>` | `oauth` | `eprospera:entity.documents.read` | `0,2,3,4,5,7,9` | Missing document consent. |
@@ -93,7 +99,7 @@ Parse stdout as JSON. Treat stderr as diagnostics only.
 - OAuth access tokens refresh automatically; tokens are never printed in command output.
 - OAuth never grants administration access. Entity data is limited to explicit
   consent and current representation checks.
-- Treat tax output and entity documents as sensitive. Do not persist them in
+- Treat tax output, filings, personal and entity documents as sensitive. Do not persist them in
   shared logs, prompts, source control, or build artifacts.
 - One-off Agent Keys from `--api-key` or `EPROSPERA_API_KEY` defer scope checks to the API
   when no cached scopes are available.
@@ -239,3 +245,53 @@ eprospera --json --yes visitor-pass create \
 
 The API rejects applications without `--consent-to-background-check`. The
 signature is the applicant's typed full legal name.
+
+### 8. Manage Entity Filings
+
+All filing commands require an entity UUID; detail/update/pay/submit also require
+the returned filing or request UUID. Agent Keys need the scopes in the matrix,
+active representation, an API-incorporated entity, and an active Manifestation
+of Will for writes. Standard keys act for represented entities. OAuth cannot file.
+
+```sh
+eprospera --json --dry-run entity amendment create "$ENTITY_ID" --file amendment.json
+eprospera --json --yes entity amendment create "$ENTITY_ID" --file amendment.json
+eprospera --json entity amendment get "$ENTITY_ID" "$FILING_ID"
+eprospera --json --yes entity amendment update "$ENTITY_ID" "$FILING_ID" --file changes.json
+eprospera --json --yes entity amendment pay "$ENTITY_ID" "$FILING_ID" --voucher "$VOUCHER_CODE"
+```
+
+Create replaces all proposals; update preserves omitted fields and clears fields
+set to null. At least one non-null proposal is required on create. Every revision
+invalidates signing. Hand `data.nextSteps.signatureUrl` to an active representative
+for portal signing before payment. Voucher payment also submits; after portal
+payment, use `amendment submit` when `data.nextSteps.submitReady` is true.
+Approval and generated documents are separate; inspect `entity documents` later.
+
+Use `entity certificate list` to inspect eligibility, then `create`, `pay`, and
+`get`. Create defaults to `{}`; optional `--file` accepts a contest note and an
+approved portal proof URL. It may reuse an open/issued request. A paid invoice
+does not establish issuance: `Issued` plus `documentUrl` is completion; `Rejected`
+and `Cancelled` are terminal. There is no certificate submit or proof-upload command.
+
+Filing writes never retry automatically. After an error/timeout, GET the same
+resource. Invalid vouchers can leave amendments invoiced and locked; payment can
+succeed before submission errors. For `submission_not_queued`, retain IDs and
+retry `amendment submit` as appropriate. Read `error.code` and `error.recovery`.
+`error.details` retains its original validation payload. Unknown certificate keys are rejected.
+Never create replacement filings or repay to work around an uncertain outcome.
+JSON preserves envelopes; use `--fields data.id,data.nextSteps` for detail reads.
+
+### 9. Read Personal Documents
+
+```sh
+eprospera auth login --oauth --scopes "openid profile email offline_access eprospera:person.documents.read"
+eprospera --json me documents
+```
+
+The OAuth client must allow the scope, and fresh consent is required. `--scopes`
+replaces defaults and login replaces the stored session; include other needed
+scopes explicitly. An Agent Key with `agent:person.documents.read` also works.
+Empty arrays and null agreement/file fields are valid. Do not substitute older
+agreements or template PDFs for the active signed agreement. This command returns
+metadata/URLs only; never send API credentials to a separate document host.
