@@ -2,12 +2,12 @@ $schema: https://opencli.org/draft.json
 opencli: "0.1"
 info:
   title: eprospera
-  version: "0.3.0"
+  version: "0.4.0"
   summary: Command-line access to the e-Prospera public API.
   description: >
     Agent-key-first TypeScript CLI for e-Prospera legal entity, application,
-    identity, entity amendments and certificates, personal documents, legal-entity
-    consent, tax, referral, visitor pass, authentication,
+    identity, entity amendments and certificates, personal documents,
+    legal-entity consent, tax, referral, visitor pass, authentication,
     configuration, completion, and schema workflows.
   contact:
     name: Prospera
@@ -177,7 +177,8 @@ command:
                   required: true
                   description: Legal entity UUID.
               examples:
-                - eprospera --json entity amendment list 11111111-1111-4111-8111-111111111111
+                - eprospera --json entity amendment list
+                  11111111-1111-4111-8111-111111111111
               metadata:
                 - name: endpoint
                   value: GET /api/v1/legal_entities/{id}/amendments
@@ -188,8 +189,8 @@ command:
                     - ak
                     - sk
             - name: create
-              description: Create a draft or replace all proposals on the existing draft; omitted fields are
-                cleared.
+              description: Create a draft or replace all proposals on the existing draft;
+                omitted fields are cleared.
               interactive: true
               arguments:
                 - name: entity-id
@@ -204,8 +205,8 @@ command:
                       required: true
                       description: Path to a JSON request body.
               examples:
-                - eprospera --json --yes entity amendment create 11111111-1111-4111-8111-111111111111
-                  --file amendment.json
+                - eprospera --json --yes entity amendment create
+                  11111111-1111-4111-8111-111111111111 --file amendment.json
               metadata:
                 - name: endpoint
                   value: POST /api/v1/legal_entities/{id}/amendments
@@ -225,7 +226,8 @@ command:
                   required: true
                   description: Amendment filing UUID.
               examples:
-                - eprospera --json entity amendment get 11111111-1111-4111-8111-111111111111
+                - eprospera --json entity amendment get
+                  11111111-1111-4111-8111-111111111111
                   22222222-2222-4222-8222-222222222222
               metadata:
                 - name: endpoint
@@ -237,8 +239,8 @@ command:
                     - ak
                     - sk
             - name: update
-              description: Revise a Draft; omitted fields are preserved and null clears a proposal.
-                Invalidates signing.
+              description: Revise a Draft; omitted fields are preserved and null clears a
+                proposal. Invalidates signing.
               interactive: true
               arguments:
                 - name: entity-id
@@ -256,7 +258,8 @@ command:
                       required: true
                       description: Path to a JSON request body.
               examples:
-                - eprospera --json --yes entity amendment update 11111111-1111-4111-8111-111111111111
+                - eprospera --json --yes entity amendment update
+                  11111111-1111-4111-8111-111111111111
                   22222222-2222-4222-8222-222222222222 --file amendment.json
               metadata:
                 - name: endpoint
@@ -268,7 +271,8 @@ command:
                     - ak
                     - sk
             - name: pay
-              description: Pay a signed amendment with a full-coverage voucher and submit it for review.
+              description: Pay a signed amendment with a full-coverage voucher and submit it
+                for review.
               interactive: true
               arguments:
                 - name: entity-id
@@ -286,7 +290,8 @@ command:
                       required: true
                       description: Full-coverage voucher code.
               examples:
-                - eprospera --json --yes entity amendment pay 11111111-1111-4111-8111-111111111111
+                - eprospera --json --yes entity amendment pay
+                  11111111-1111-4111-8111-111111111111
                   22222222-2222-4222-8222-222222222222 --voucher EXAMPLE_VOUCHER
               metadata:
                 - name: endpoint
@@ -308,7 +313,8 @@ command:
                   required: true
                   description: Amendment filing UUID.
               examples:
-                - eprospera --json --yes entity amendment submit 11111111-1111-4111-8111-111111111111
+                - eprospera --json --yes entity amendment submit
+                  11111111-1111-4111-8111-111111111111
                   22222222-2222-4222-8222-222222222222
               metadata:
                 - name: endpoint
@@ -323,13 +329,15 @@ command:
           description: Request, pay, and inspect Certificates of Good Standing.
           commands:
             - name: list
-              description: List certificate requests and current eligibility, including tax compliance.
+              description: List certificate requests and current eligibility, including tax
+                compliance.
               arguments:
                 - name: entity-id
                   required: true
                   description: Legal entity UUID.
               examples:
-                - eprospera --json entity certificate list 11111111-1111-4111-8111-111111111111
+                - eprospera --json entity certificate list
+                  11111111-1111-4111-8111-111111111111
               metadata:
                 - name: endpoint
                   value: GET /api/v1/legal_entities/{id}/certificate_requests
@@ -340,7 +348,8 @@ command:
                     - ak
                     - sk
             - name: create
-              description: Prepare a certificate request and invoice, or reuse an existing open or issued request.
+              description: Prepare a certificate request and invoice, or reuse an existing
+                open or issued request.
               interactive: true
               arguments:
                 - name: entity-id
@@ -354,7 +363,8 @@ command:
                       required: true
                       description: Path to a JSON request body.
               examples:
-                - eprospera --json --yes entity certificate create 11111111-1111-4111-8111-111111111111
+                - eprospera --json --yes entity certificate create
+                  11111111-1111-4111-8111-111111111111
               metadata:
                 - name: endpoint
                   value: POST /api/v1/legal_entities/{id}/certificate_requests
@@ -365,7 +375,8 @@ command:
                     - ak
                     - sk
             - name: get
-              description: Read certificate status and document URL; Issued, Rejected, and Cancelled are terminal.
+              description: Read certificate status and document URL; Issued, Rejected, and
+                Cancelled are terminal.
               arguments:
                 - name: entity-id
                   required: true
@@ -374,7 +385,8 @@ command:
                   required: true
                   description: Certificate request UUID.
               examples:
-                - eprospera --json entity certificate get 11111111-1111-4111-8111-111111111111
+                - eprospera --json entity certificate get
+                  11111111-1111-4111-8111-111111111111
                   33333333-3333-4333-8333-333333333333
               metadata:
                 - name: endpoint
@@ -386,7 +398,8 @@ command:
                     - ak
                     - sk
             - name: pay
-              description: Pay with a full-coverage voucher; certificate review and issuance are asynchronous.
+              description: Pay with a full-coverage voucher; certificate review and issuance
+                are asynchronous.
               interactive: true
               arguments:
                 - name: entity-id
@@ -404,11 +417,13 @@ command:
                       required: true
                       description: Full-coverage voucher code.
               examples:
-                - eprospera --json --yes entity certificate pay 11111111-1111-4111-8111-111111111111
+                - eprospera --json --yes entity certificate pay
+                  11111111-1111-4111-8111-111111111111
                   33333333-3333-4333-8333-333333333333 --voucher EXAMPLE_VOUCHER
               metadata:
                 - name: endpoint
-                  value: POST /api/v1/legal_entities/{id}/certificate_requests/{requestId}/pay/voucher
+                  value: POST
+                    /api/v1/legal_entities/{id}/certificate_requests/{requestId}/pay/voucher
                 - name: requiredScope
                   value: agent:entity.filing.pay
                 - name: credentialTypes
@@ -619,8 +634,8 @@ command:
             - name: credentialTypes
               value: [ ak, oauth ]
         - name: documents
-          description: Read personal document metadata, URLs, and the active Agreement of Coexistence.
-            Does not download files.
+          description: Read personal document metadata, URLs, and the active Agreement of
+            Coexistence. Does not download files.
           examples:
             - eprospera --json me documents
           metadata:
